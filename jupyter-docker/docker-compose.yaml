@@ -1,0 +1,14 @@
+version: '3'
+services:
+  jupyter:
+    image: jupyter/datascience-notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - jupyter_data:/home/jovyan/work
+    environment:
+      - JUPYTER_TOKEN=${TOKEN}  # Optional: replace with a secure token if you want to avoid using the auto-generated token
+
+volumes:
+  jupyter_data:
+    external: false
