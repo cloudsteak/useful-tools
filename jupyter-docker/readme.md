@@ -27,7 +27,7 @@ services:
     ports:
       - "8888:8888"
     volumes:
-      - jupyter_data:/home/jovyan/work
+      - jupyter_data:/home/jovyan
     environment:
       - JUPYTER_TOKEN=${TOKEN}  # Optional: replace with a secure token if you want to avoid using the auto-generated token
 
