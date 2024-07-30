@@ -1,4 +1,4 @@
-# Usefool tools
+# Useful tools
 
 ## Tools
 
