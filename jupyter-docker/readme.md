@@ -9,7 +9,7 @@ Before you begin, make sure you have the following installed on your system:
 - Docker
 - Docker Compose
 
-# Step 1: Create a Docker Volume
+## Step 1: Create a Docker Volume
 
 Run the following command to create a Docker volume for the Jupyter data:
 
