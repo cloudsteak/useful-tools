@@ -1,0 +1,19 @@
+[project]
+name = "clone-tags"
+version = "1.0.0"
+description = "MP3 ID3 tag-ek teljes klónozása WAV fájlokba (Rekordbox-kompatibilis)"
+requires-python = ">=3.11"
+dependencies = [
+    "mutagen>=1.47.0",
+]
+
+[project.scripts]
+clone-tags = "clone_tags:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# single-file modul (clone_tags.py), nem package
+only-include = ["clone_tags.py"]
