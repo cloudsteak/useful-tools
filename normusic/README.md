@@ -16,23 +16,32 @@
 
 - Python 3.13
 
-## Installation
+## Installation (uv)
 
 ```bash
-cd normusic
-pip install .
+uv sync
 ```
 
-This installs the `normusic` command.
+Local run without global install:
+
+```bash
+uv run normusic --help
+```
+
+Install as a global uv tool:
+
+```bash
+uv tool install --from . normusic
+```
 
 ## Usage
 
 ```bash
 # Preview renames (no files are changed)
-normusic --dry-run /path/to/music
+uv run normusic --dry-run /path/to/music
 
 # Apply renames
-normusic /path/to/music
+uv run normusic /path/to/music
 ```
 
 ## Output
