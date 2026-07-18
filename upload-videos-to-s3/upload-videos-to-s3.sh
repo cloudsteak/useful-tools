@@ -1,6 +1,6 @@
 #!/bin/bash
 # upload-videos-to-s3.sh
-# Rename MP4 files, upload to S3, set download metadata, and print download links.
+# Rename MP4/PDF files, upload to S3, attach training annotations, set download metadata, and print download links.
 #
 # Usage:
 #   ./upload-videos-to-s3.sh <local_dir> <bucket/path/> [cloudfront_domain]
@@ -12,16 +12,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SET_S3_DOWNLOAD="${SCRIPT_DIR}/../set-s3-download/set-s3-download.sh"
+ANNOTATION_NAME="training-info"
 
 usage() {
     cat <<EOF
 Használat: $(basename "$0") <helyi_mappa> <bucket/eleresi/ut> [cloudfront_domain]
 
 Paraméterek:
-  helyi_mappa        A feltöltendő MP4 fájlokat tartalmazó mappa
+  helyi_mappa        A feltöltendő MP4 és PDF fájlokat tartalmazó mappa
   bucket/eleresi/ut  S3 bucket és opcionális prefix (pl. my-bucket/videos/2026/)
   cloudfront_domain  Opcionális CloudFront domain (pl. d1234.cloudfront.net).
                      Ha nincs megadva, közvetlen S3 HTTPS linkek készülnek.
+
+A mappában opcionálisan elhelyezhető kepzes.md vagy description.md fájl:
+  - A teljes markdown tartalom kerül a leírásba.
+  - A linkek automatikusan kinyerésre kerülnek (markdown, autolink, nyers URL).
 
 Példa:
   $(basename "$0") ./videos my-bucket/training/module1/
@@ -79,6 +84,114 @@ normalize_cloudfront_domain() {
     echo "$domain"
 }
 
+resolve_bucket_region() {
+    local bucket="$1"
+    local location
+
+    location="$(aws s3api get-bucket-location --bucket "$bucket" --output text 2>/dev/null || true)"
+    location="${location//$'\n'/}"
+
+    case "$location" in
+        ""|None|null)
+            echo "us-east-1"
+            ;;
+        EU)
+            echo "eu-west-1"
+            ;;
+        *)
+            echo "$location"
+            ;;
+    esac
+}
+
+find_description_file() {
+    local dir="$1"
+
+    for candidate in kepzes.md description.md; do
+        if [[ -f "${dir%/}/$candidate" ]]; then
+            echo "${dir%/}/$candidate"
+            return 0
+        fi
+    done
+}
+
+s3_annotations_supported() {
+    aws s3api put-object-annotation help >/dev/null 2>&1
+}
+
+build_annotation_payload() {
+    local description_file="${1:--}"
+    local manifest_file="$2"
+    local output_file="$3"
+
+    python3 -c '
+import json
+import re
+import sys
+
+description_path = sys.argv[1]
+manifest_path = sys.argv[2]
+output_path = sys.argv[3]
+
+URL_PATTERN = re.compile(r"https?://[^\s\)\]<>\"]+")
+
+
+def normalize_url(url: str) -> str:
+    return url.rstrip(".,;:)\"'\''")
+
+
+def extract_links(text: str) -> list[str]:
+    links: list[str] = []
+    seen: set[str] = set()
+
+    for match in re.finditer(r"\[[^\]]*\]\((https?://[^\)]+)\)", text):
+        url = normalize_url(match.group(1))
+        if url not in seen:
+            seen.add(url)
+            links.append(url)
+
+    for match in re.finditer(r"<(https?://[^>]+)>", text):
+        url = normalize_url(match.group(1))
+        if url not in seen:
+            seen.add(url)
+            links.append(url)
+
+    for match in URL_PATTERN.finditer(text):
+        url = normalize_url(match.group(0))
+        if url not in seen:
+            seen.add(url)
+            links.append(url)
+
+    return links
+
+
+files = []
+with open(manifest_path, encoding="utf-8") as manifest:
+    for line in manifest:
+        line = line.strip()
+        if not line:
+            continue
+        files.append(line.split("|", 1)[0])
+
+description = ""
+links: list[str] = []
+if description_path != "-":
+    with open(description_path, encoding="utf-8") as handle:
+        description = handle.read().strip()
+    links = extract_links(description)
+
+payload = {
+    "files": sorted(files),
+    "description": description,
+    "description_format": "markdown",
+    "links": links,
+}
+
+with open(output_path, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle, ensure_ascii=False, indent=2)
+' "$description_file" "$manifest_file" "$output_file"
+}
+
 s3_object_exists() {
     local key="$1"
     aws s3api head-object \
@@ -86,6 +199,32 @@ s3_object_exists() {
         --key "$key" \
         --region "$REGION" \
         >/dev/null 2>&1
+}
+
+upload_to_s3() {
+    local local_file="$1"
+    local s3_key="$2"
+    local s3_uri="s3://${S3_BUCKET}/${s3_key}"
+
+    if s3_object_exists "$s3_key"; then
+        echo "  meglévő S3 objektum (nem töltődik fel újra): $s3_key"
+        return 0
+    fi
+
+    echo "  feltöltés: $s3_key"
+    aws s3 cp "$local_file" "$s3_uri" --region "$REGION" --skip-existing
+}
+
+put_object_annotation() {
+    local key="$1"
+    local payload_file="$2"
+
+    aws s3api put-object-annotation \
+        --bucket "$S3_BUCKET" \
+        --key "$key" \
+        --annotation-name "$ANNOTATION_NAME" \
+        --annotation-payload "$payload_file" \
+        --region "$REGION"
 }
 
 check_name_collision() {
@@ -133,26 +272,35 @@ if ! command -v aws >/dev/null 2>&1; then
 fi
 
 parse_s3_target "$S3_TARGET"
-REGION="${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || true)}"
-REGION="${REGION:-us-east-1}"
+REGION="$(resolve_bucket_region "$S3_BUCKET")"
+
+echo "S3 bucket régió: ${REGION}"
+echo ""
 
 MANIFEST="$(mktemp)"
 NAMES_FILE="$(mktemp)"
-trap 'rm -f "$MANIFEST" "$NAMES_FILE"' EXIT
+ANNOTATION_PAYLOAD="$(mktemp)"
+trap 'rm -f "$MANIFEST" "$NAMES_FILE" "$ANNOTATION_PAYLOAD"' EXIT
 
-mp4_files="$(find "$LOCAL_DIR" -maxdepth 1 -type f -iname '*.mp4' | sort || true)"
+upload_files="$(find "$LOCAL_DIR" -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.pdf' \) | sort || true)"
+DESCRIPTION_FILE="$(find_description_file "$LOCAL_DIR" || true)"
 
-if [[ -z "$mp4_files" ]]; then
-    echo "Nincs MP4 fájl a mappában: $LOCAL_DIR"
+if [[ -z "$upload_files" ]]; then
+    echo "Nincs MP4 vagy PDF fájl a mappában: $LOCAL_DIR"
     exit 0
 fi
 
-echo "=== MP4 fájlok listája ==="
+echo "=== Fájlok listája (MP4, PDF) ==="
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     echo "  $(basename "$file")"
-done <<< "$mp4_files"
+done <<< "$upload_files"
 echo ""
+
+if [[ -n "$DESCRIPTION_FILE" ]]; then
+    echo "Képzés leírás forrása: $(basename "$DESCRIPTION_FILE")"
+    echo ""
+fi
 
 echo "=== Átnevezés ==="
 while IFS= read -r file; do
@@ -180,22 +328,36 @@ while IFS= read -r file; do
     fi
 
     printf '%s|%s\n' "$new_name" "$file" >> "$MANIFEST"
-done <<< "$mp4_files"
+done <<< "$upload_files"
 echo ""
 
 echo "=== S3 feltöltés (s3://${S3_BUCKET}/${S3_PREFIX}) ==="
+echo "  Megjegyzés: a már létező objektumok nem kerülnek felülírásra."
 sort "$MANIFEST" | while IFS='|' read -r new_name file; do
     s3_key="${S3_PREFIX}${new_name}"
-    s3_uri="s3://${S3_BUCKET}/${s3_key}"
-
-    if s3_object_exists "$s3_key"; then
-        echo "  kihagyva (már létezik): $new_name"
-    else
-        echo "  feltöltés: $new_name"
-        aws s3 cp "$file" "$s3_uri" --region "$REGION"
-    fi
+    upload_to_s3 "$file" "$s3_key"
 done
 echo ""
+
+if s3_annotations_supported; then
+    echo "=== S3 annotációk (${ANNOTATION_NAME}) ==="
+    if [[ -n "$DESCRIPTION_FILE" ]]; then
+        build_annotation_payload "$DESCRIPTION_FILE" "$MANIFEST" "$ANNOTATION_PAYLOAD"
+    else
+        build_annotation_payload "-" "$MANIFEST" "$ANNOTATION_PAYLOAD"
+    fi
+
+    sort "$MANIFEST" | while IFS='|' read -r new_name file; do
+        s3_key="${S3_PREFIX}${new_name}"
+        echo "  annotáció: $new_name"
+        put_object_annotation "$s3_key" "$ANNOTATION_PAYLOAD"
+    done
+    echo ""
+else
+    echo "Figyelmeztetés: az aws CLI nem támogatja az S3 annotációkat (legalább 2.35.6 szükséges)." >&2
+    echo "  Az annotációk kihagyva. Frissítsd az AWS CLI-t, majd futtasd újra a scriptet." >&2
+    echo ""
+fi
 
 echo "=== Letöltési metaadatok beállítása ==="
 "$SET_S3_DOWNLOAD" "$S3_BUCKET" "$S3_PREFIX" "$REGION"
