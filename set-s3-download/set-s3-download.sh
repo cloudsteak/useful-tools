@@ -50,7 +50,19 @@ aws s3api list-objects-v2 \
     
     # Fájlnév kinyerése a Content-Disposition-höz
     FILENAME=$(basename "$KEY")
-    
+
+    CURRENT_DISPOSITION="$(aws s3api head-object \
+        --bucket "$BUCKET" \
+        --key "$KEY" \
+        --region "$REGION" \
+        --query 'ContentDisposition' \
+        --output text 2>/dev/null || true)"
+
+    if [[ "$CURRENT_DISPOSITION" == attachment* ]]; then
+        echo "Kihagyva (már beállítva): $KEY"
+        continue
+    fi
+
     echo "Frissítés: $KEY"
     
     aws s3api copy-object \

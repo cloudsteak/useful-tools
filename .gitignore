@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 .vscode/settings.json
 clone-tags/mapping.csv
+.DS_Store
