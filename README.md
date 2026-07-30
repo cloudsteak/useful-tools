@@ -7,3 +7,4 @@
 - [3. NorMusic – Normalize Audio Filenames](normusic/README.md)
 - [4. Upload Videos to S3](upload-videos-to-s3/README.md)
 - [5. Set S3 Download](set-s3-download/README.md)
+- [6. Rekordbox Export](rekordbox-export/README.md)

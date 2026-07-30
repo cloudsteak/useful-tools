@@ -163,3 +163,6 @@ cython_debug/
 .vscode/settings.json
 clone-tags/mapping.csv
 .DS_Store
+
+
+*.csv
