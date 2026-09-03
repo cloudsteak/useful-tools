@@ -173,7 +173,14 @@ class AiClient:
 
 Téma / terület: {topic}
 
-Nyelv: minden szöveges mezőt (cím, leírás, elfogadási kritériumok) {lang_name} nyelven írj.
+Nyelv: minden szöveges mezőt (cím, leírás, elfogadási kritériumok) KIZÁRÓLAG
+{lang_name} nyelven írj - egyetlen szót vagy címkét se hagyj más nyelven, és
+ne keverd a két nyelvet egyetlen mezőn belül sem.
+
+Formátum: minden story 'description' mezője KÖTELEZŐEN a szabvány user story
+sablont kövesse - angolul "As a <role>, I want <goal>, so that <benefit>.",
+magyarul ennek {lang_name} nyelvű megfelelőjét (pl. "Mint <szerepkör>,
+szeretném <cél>, azért hogy <haszon>."). Ne térj el ettől a szerkezettől.
 
 Prioritás rangsorhoz ({len(priority_names)} szintű skála áll rendelkezésre, a listában
 a legmagasabbtól a legalacsonyabbig: {", ".join(priority_names)}) minden story-hoz adj
@@ -206,7 +213,14 @@ Fibonacci becslést (1,2,3,5,8,13).
 {category_label} jellegű user story-t egy Jira backlog feltöltéséhez. Lehetséges
 ihlető témák (nem kötelező mindet felhasználni, variálhatsz): {topics}.
 
-Nyelv: minden szöveges mezőt (cím, leírás, elfogadási kritériumok) {lang_name} nyelven írj.
+Nyelv: minden szöveges mezőt (cím, leírás, elfogadási kritériumok) KIZÁRÓLAG
+{lang_name} nyelven írj - egyetlen szót vagy címkét se hagyj más nyelven, és
+ne keverd a két nyelvet egyetlen mezőn belül sem.
+
+Formátum: minden story 'description' mezője KÖTELEZŐEN a szabvány user story
+sablont kövesse - angolul "As a <role>, I want <goal>, so that <benefit>.",
+magyarul ennek {lang_name} nyelvű megfelelőjét (pl. "Mint <szerepkör>,
+szeretném <cél>, azért hogy <haszon>."). Ne térj el ettől a szerkezettől.
 
 Prioritás rangsorhoz ({len(priority_names)} szintű skála áll rendelkezésre, a listában
 a legmagasabbtól a legalacsonyabbig: {", ".join(priority_names)}) minden story-hoz adj

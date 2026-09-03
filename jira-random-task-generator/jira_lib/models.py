@@ -14,7 +14,15 @@ from pydantic import BaseModel, Field
 
 class StoryContent(BaseModel):
     title: str = Field(description="Rövid, egyértelmű user story cím")
-    description: str = Field(description="Részletes leírás, 'As a ... I want ... so that ...' formában")
+    description: str = Field(
+        description=(
+            "A user story leírása KÖTELEZŐEN a szabvány "
+            "'As a <szerepkör>, I want <cél>, so that <haszon>' sablon szerint, "
+            "a kért nyelvre lefordítva (pl. magyarul: "
+            "'Mint <szerepkör>, szeretném <cél>, azért hogy <haszon>'). "
+            "Ne térj el ettől a szerkezettől, és ne keverd a két nyelvet."
+        )
+    )
     acceptance_criteria: list[str] = Field(
         description="3-6 konkrét, ellenőrizhető elfogadási kritérium", default_factory=list
     )
@@ -39,7 +47,15 @@ class EpicPlan(BaseModel):
 
 class StandaloneTask(BaseModel):
     title: str = Field(description="Rövid, egyértelmű task/user story cím")
-    description: str = Field(description="Részletes leírás")
+    description: str = Field(
+        description=(
+            "A user story leírása KÖTELEZŐEN a szabvány "
+            "'As a <szerepkör>, I want <cél>, so that <haszon>' sablon szerint, "
+            "a kért nyelvre lefordítva (pl. magyarul: "
+            "'Mint <szerepkör>, szeretném <cél>, azért hogy <haszon>'). "
+            "Ne térj el ettől a szerkezettől, és ne keverd a két nyelvet."
+        )
+    )
     acceptance_criteria: list[str] = Field(default_factory=list)
     story_points: int = Field(description="Becsült story point (Fibonacci: 1,2,3,5,8,13)")
     priority_rank: int = Field(

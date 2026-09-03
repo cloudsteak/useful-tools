@@ -49,6 +49,8 @@ POC_TYPE_CANDIDATES = ["POC", "Proof of Concept", "PoC", "Prototípus"]
 START_DATE_FIELD_CANDIDATES = ["Start date", "Kezdés dátuma", "Kezdő dátum"]
 IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 
+ACCEPTANCE_CRITERIA_LABELS = {"hu": "Elfogadási kritériumok:", "en": "Acceptance criteria:"}
+
 # A klasszikus (company-managed) projekteknél a Jira Agile API a board type-ot
 # 'scrum'-nak jelöli. A csapat-kezelt (team-managed / "next-gen") projekteknél
 # viszont mindig 'simple' a type - attól függetlenül, hogy be van-e kapcsolva
@@ -252,12 +254,14 @@ def create_planned_issues(
     epic_key: str,
     category: str,
     start_date_field_id: str | None,
+    language: str,
 ) -> None:
+    ac_label = ACCEPTANCE_CRITERIA_LABELS.get(language, ACCEPTANCE_CRITERIA_LABELS["en"])
     for issue in planned:
         desc = to_adf(issue.description)
         if issue.acceptance_criteria:
             desc["content"].append(
-                {"type": "paragraph", "content": [{"type": "text", "text": "Elfogadási kritériumok:"}]}
+                {"type": "paragraph", "content": [{"type": "text", "text": ac_label}]}
             )
             desc["content"].append(bullet_list_adf(issue.acceptance_criteria))
 
@@ -481,7 +485,7 @@ def run(args: argparse.Namespace) -> int:
 
             create_planned_issues(
                 jira, args.project, planned, story_type_id, first_story_type_id,
-                epic_key, args.category, start_date_field_id,
+                epic_key, args.category, start_date_field_id, args.language,
             )
             link_dependencies(jira, planned)
             start_first_story(jira, planned, sprint)
@@ -504,11 +508,12 @@ def run(args: argparse.Namespace) -> int:
         print_plan(planned, epic_title=None)
         return 0
 
+    ac_label = ACCEPTANCE_CRITERIA_LABELS.get(args.language, ACCEPTANCE_CRITERIA_LABELS["en"])
     for issue in planned:
         desc = to_adf(issue.description)
         if issue.acceptance_criteria:
             desc["content"].append(
-                {"type": "paragraph", "content": [{"type": "text", "text": "Elfogadási kritériumok:"}]}
+                {"type": "paragraph", "content": [{"type": "text", "text": ac_label}]}
             )
             desc["content"].append(bullet_list_adf(issue.acceptance_criteria))
 
