@@ -181,6 +181,12 @@ class JiraClient:
     def update_issue(self, issue_key: str, fields: dict) -> None:
         self._put(f"/rest/api/3/issue/{issue_key}", {"fields": fields})
 
+    def get_edit_meta(self, issue_key: str) -> dict:
+        """Az adott issue-n ténylegesen szerkeszthető mezők (és pl. select-típusú
+        mezőknél a megengedett értékek) - így egy mező pontos írási formátumát
+        nem kell kitalálni, a Jira maga mondja meg."""
+        return self._get(f"/rest/api/3/issue/{issue_key}/editmeta")
+
     def get_transitions(self, issue_key: str) -> list[dict]:
         data = self._get(f"/rest/api/3/issue/{issue_key}/transitions")
         return data.get("transitions", [])

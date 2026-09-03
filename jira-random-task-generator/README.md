@@ -203,16 +203,19 @@ minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési
 - **Spike/POC issue type**: ha a `--first-story-type spike` vagy `poc`
   kapcsolót használod, de a projektben nincs ilyen nevű issue type
   konfigurálva, a tool figyelmeztet és helyette sima Story-t hoz létre.
-- **Epic szín**: a klasszikus (company-managed) projekteken az "Epic Color"
-  egy sima custom field, `ghx-label-N` értékekkel, ezt állítja be a tool
-  körbeforgatva epiconként. A mezőt elsősorban a stabil, locale-független
-  custom field type-ja alapján azonosítja (`com.pyxis.greenhopper.jira:
-  gh-epic-color`), csak másodlagosan a megjelenített neve alapján - így
-  akkor is megtalálja, ha a mezőt átnevezték. Csapat-kezelt (team-managed)
-  projekteken ez a mező jellemzően nem elérhető (app-tulajdonú, nem
-  szerkeszthető sima REST API-n) - ilyenkor a tool figyelmeztet (feltüntetve
-  a "color"/"colour"/"szín" szót tartalmazó hasonló nevű mezőket, ha van
-  ilyen, diagnosztikai segítségnek), de nem áll le, és minden epic a Jira
+- **Epic szín**: a klasszikus "Epic Color" és az újabb "Issue color" mezőt is
+  megpróbálja megtalálni - elsőként a stabil, locale-független custom field
+  type-ja alapján (`com.pyxis.greenhopper.jira:gh-epic-color`), másodsorban a
+  megjelenített neve alapján (mindkét mezőnév-variánsra). Ha megtalálja, az
+  első létrehozott epicen lekérdezi a Jira **editmeta** API-jával
+  (`GET /rest/api/3/issue/{key}/editmeta`), hogy ténylegesen milyen értékek
+  engedélyezettek rajta - így nem kell kitalálni a mező pontos írási
+  formátumát (ez instance-enként/mezőtípusonként eltérhet), és a talált
+  értékeket körbeforgatva osztja ki epiconként. Ha a mező egyáltalán nincs az
+  editmeta-ban (pl. Atlassian app-tulajdonú rendszermező, ami csak Jira
+  Automation-nel írható), vagy sehol nem található, a tool egyetlen
+  figyelmeztetéssel jelzi (feltüntetve a hasonló nevű mezőket
+  diagnosztikai segítségnek), de nem áll le - ilyenkor minden epic a Jira
   alapértelmezett színét kapja.
 - **Egyetlen aktuális sprint**: mivel Jira-ban egyszerre csak egy sprint
   lehet aktív egy boardon, minden epic első eleme ugyanabba az aktuális
