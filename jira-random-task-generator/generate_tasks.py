@@ -66,7 +66,10 @@ def warn(msg: str) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="AI-alapú random Jira task generátor (Scrum)")
-    parser.add_argument("--project", "-p", required=True, help="Jira projekt kulcs, pl. DEMO")
+    parser.add_argument(
+        "--project", "-p", required=True,
+        help="Jira projekt (Space) kulcs, pl. DEMO - a Space URL-jében látható project key",
+    )
     parser.add_argument(
         "--count", "-c", type=int, default=5,
         help="type=story esetén hány önálló story; type=epic esetén hány epic készüljön (default: 5)",

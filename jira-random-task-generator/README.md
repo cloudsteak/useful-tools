@@ -4,6 +4,12 @@ AI-alapú (Vertex AI / Gemini) random Jira task generátor. Egy megadott Jira
 Cloud projektbe (mindig **Scrum** módban) generál realisztikus tartalmú
 task-okat, és be is állítja hozzá a szükséges sprint-infrastruktúrát.
 
+> **Megjegyzés a terminológiáról:** amit az újabb Atlassian felületen
+> **"Space"**-ként látsz, az a Jira REST API-ban (és ebben a tool-ban) még
+> mindig **"project"** — a `--project`/`-p` kapcsolóhoz a Space URL-jében
+> látható **project key** kell (pl. `https://cloudmentorhu.atlassian.net/jira/software/projects/TEMP`
+> esetén ez `TEMP`).
+
 Konfigurálható:
 
 - **hány task** készüljön (`--count`; `--type epic` esetén ez az epicek
@@ -118,7 +124,7 @@ uv run generate-jira-tasks -p DEMO -x
 
 | Kapcsoló | Rövid | Default | Leírás |
 |---|---|---|---|
-| `--project` | `-p` | *(kötelező)* | Jira projekt kulcs |
+| `--project` | `-p` | *(kötelező)* | Jira projekt (Space) kulcs, pl. `TEMP` |
 | `--count` | `-c` | `5` | `type=story`: hány önálló story; `type=epic`: hány epic |
 | `--stories-per-epic` | `-s` | `4` | Epicenként hány user story (csak `type=epic` esetén) |
 | `--language` | `-l` | `hu` | `hu` vagy `en` |
