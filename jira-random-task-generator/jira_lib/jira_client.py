@@ -153,6 +153,10 @@ class JiraClient:
             {"issues": issue_keys},
         )
 
+    def set_epic_color(self, epic_key: str, color_key: str) -> None:
+        """Epic szín beállítása (pl. 'color_1'..'color_9') a Jira Software Agile API-n."""
+        self._put(f"/rest/agile/1.0/epic/{epic_key}/color", {"color": {"key": color_key}})
+
     # -- issue CRUD ---------------------------------------------------------------
 
     def create_issue(self, fields: dict) -> dict:

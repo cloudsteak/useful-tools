@@ -54,6 +54,12 @@ IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 # választott nyelven generálódik).
 ACCEPTANCE_CRITERIA_LABEL = "Acceptance Criteria:"
 
+# A Jira Software Agile API dokumentált epic szín kulcsai. Több epic esetén
+# körbeforgatva osztjuk ki, hogy a board-on/backlogban vizuálisan is
+# megkülönböztethetők legyenek egymástól (különben a Jira minden epicnek
+# ugyanazt az alapértelmezett színt adná).
+EPIC_COLOR_KEYS = [f"color_{i}" for i in range(1, 10)]
+
 # A klasszikus (company-managed) projekteknél a Jira Agile API a board type-ot
 # 'scrum'-nak jelöli. A csapat-kezelt (team-managed / "next-gen") projekteknél
 # viszont mindig 'simple' a type - attól függetlenül, hogy be van-e kapcsolva
@@ -482,6 +488,10 @@ def run(args: argparse.Namespace) -> int:
                 },
                 {"labels": [args.category]},
             )
+            try:
+                jira.set_epic_color(epic_key, EPIC_COLOR_KEYS[epic_index % len(EPIC_COLOR_KEYS)])
+            except JiraError as exc:
+                warn(f"{epic_key}: epic szín beállítása sikertelen ({exc}). Kihagyva.")
             log(f"Epic létrehozva: {epic_key} ({window_start.isoformat()} -> {window_end.isoformat()})")
 
             create_planned_issues(

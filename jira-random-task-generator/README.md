@@ -169,9 +169,12 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic \
 5. Epiconként a tool a függőség-gráfot ciklusmentesíti és topológiai
    sorrendbe rendezi, ez alapján osztja ki a story-k start/due dátumait a
    saját epic-időablakán belül.
-6. Jira-ban létrejön minden Epic, majd alattuk a story-k (`parent` mezővel
-   az Epichez kötve, `labels` mezőben a kategóriával), rájuk a
-   `Blocks`/`is blocked by` linkek a függőségek alapján.
+6. Jira-ban létrejön minden Epic — mindegyik más Jira epic-színt kap, egy
+   9 elemű palettán körbeforgatva (`color_1`..`color_9`), hogy a board-on/
+   backlogban vizuálisan is megkülönböztethetők legyenek egymástól —, majd
+   alattuk a story-k (`parent` mezővel az Epichez kötve, `labels` mezőben a
+   kategóriával), rájuk a `Blocks`/`is blocked by` linkek a függőségek
+   alapján.
 7. Epiconként a függőség nélküli, topológiailag legelső elem — típusa a
    `--first-story-type` szerint Story/Spike/POC — bekerül az aktuális
    sprintbe és át lesz állítva "In Progress"-re; a többi a backlogban marad
@@ -199,6 +202,10 @@ minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési
 - **Spike/POC issue type**: ha a `--first-story-type spike` vagy `poc`
   kapcsolót használod, de a projektben nincs ilyen nevű issue type
   konfigurálva, a tool figyelmeztet és helyette sima Story-t hoz létre.
+- **Epic szín**: ha az instance/projekt nem támogatja a Jira Software
+  epic-szín API-t (`PUT /rest/agile/1.0/epic/{key}/color`), a tool
+  figyelmeztet, de nem áll le - az epicek ilyenkor a Jira alapértelmezett
+  színét kapják.
 - **Egyetlen aktuális sprint**: mivel Jira-ban egyszerre csak egy sprint
   lehet aktív egy boardon, minden epic első eleme ugyanabba az aktuális
   sprintbe kerül (ez realisztikus: egy sprinten belül több, egymást átfedő
