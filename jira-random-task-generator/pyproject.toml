@@ -1,7 +1,7 @@
 [project]
 name = "jira-random-task-generator"
-version = "1.0.0"
-description = "AI-alapú (Vertex AI / Gemini) random Jira task generátor: epic/story bontás, prioritás, függőségek, sprint-kezelés"
+version = "1.1.0"
+description = "AI-alapú (Vertex AI / Gemini) random Jira task generátor: Scrum, több átfedő epic, kategóriák, Spike/POC, prioritás, függőségek"
 requires-python = ">=3.11"
 dependencies = [
     "requests>=2.31.0",

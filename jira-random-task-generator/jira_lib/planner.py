@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from datetime import date, timedelta
 
 from .models import PlannedIssue, StandaloneTask, StoryContent
@@ -67,17 +68,20 @@ def _topological_order(n: int, deps: list[list[int]]) -> list[int]:
 def build_epic_plan(
     stories: list[StoryContent],
     priority_names: list[str],
-    sprint_start: date | None,
-    sprint_end: date | None,
+    epic_window_start: date | None,
+    epic_window_end: date | None,
 ) -> list[PlannedIssue]:
     """Epic alá tartozó story-k teljes terve: prioritás, tisztított függőség,
-    topológiai sorrend alapján dátumok, és az 'első' (In Progress-be kerülő) story."""
+    topológiai sorrend alapján dátumok, és az 'első' (In Progress-be kerülő) story.
+
+    Az epic_window_start/epic_window_end az adott epic saját (más epicekkel
+    átfedésben lévő) időablaka, lásd stagger_epic_windows()."""
     n = len(stories)
     deps = _clean_dependencies(stories)
     order = _topological_order(n, deps)
 
-    if sprint_start is not None and sprint_end is not None and sprint_end > sprint_start:
-        window_start, window_end = sprint_start, sprint_end
+    if epic_window_start is not None and epic_window_end is not None and epic_window_end > epic_window_start:
+        window_start, window_end = epic_window_start, epic_window_end
     else:
         window_start = date.today()
         window_end = window_start + timedelta(days=max(7, n * 2))
@@ -112,6 +116,32 @@ def build_epic_plan(
     planned[first_idx].is_first = True
 
     return planned
+
+
+def stagger_epic_windows(
+    epic_count: int,
+    base_start: date,
+    typical_duration_days: int = 10,
+) -> list[tuple[date, date]]:
+    """Több epic egymást átfedő, de el nem csúszásmentes (nem egyszerre induló)
+    időablakát adja vissza, valóságot szimulálva: minden következő epic
+    valamennyi (véletlenszerű, de sosem 0) nappal később indul, mint az előző,
+    és a saját maga is véletlenszerűen változó hosszúságú - így az epicek
+    munkája jellemzően időben átfedésbe kerül egymással, anélkül hogy
+    ugyanazon a napon indulnának."""
+    windows: list[tuple[date, date]] = []
+    cursor = base_start
+    min_stagger = max(1, typical_duration_days // 5)
+    max_stagger = max(min_stagger + 1, typical_duration_days // 2)
+    for i in range(epic_count):
+        start = cursor
+        duration = random.randint(
+            max(3, typical_duration_days - 3), typical_duration_days + 5
+        )
+        end = start + timedelta(days=duration)
+        windows.append((start, end))
+        cursor = start + timedelta(days=random.randint(min_stagger, max_stagger))
+    return windows
 
 
 def build_standalone_plan(tasks: list[StandaloneTask], priority_names: list[str]) -> list[PlannedIssue]:
