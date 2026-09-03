@@ -64,23 +64,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="type=story esetén hány önálló story; type=epic esetén hány epic készüljön (default: 5)",
     )
     parser.add_argument(
-        "--stories-per-epic", type=int, default=4,
+        "--stories-per-epic", "-s", type=int, default=4,
         help="Epicenként hány user story készüljön (csak type=epic esetén, default: 4)",
     )
     parser.add_argument("--language", "-l", choices=["hu", "en"], default="hu", help="Generált tartalom nyelve")
     parser.add_argument("--type", "-t", choices=["epic", "story"], default="story", help="Task típus: epic (bontással) vagy önálló story")
     parser.add_argument(
-        "--category", choices=["dev", "test", "devops"], default="dev",
+        "--category", "-k", choices=["dev", "test", "devops"], default="dev",
         help="Feladat kategória: fejlesztési, tesztelési vagy devops jellegű tartalom (default: dev)",
     )
     parser.add_argument(
-        "--first-story-type", choices=["story", "spike", "poc"], default="story",
+        "--first-story-type", "-f", choices=["story", "spike", "poc"], default="story",
         help="Epicenként az első (In Progress-be kerülő) elem típusa: hagyományos story, Spike vagy POC (default: story)",
     )
-    parser.add_argument("--topic", default=None, help="Opcionális témajavaslat az AI-nak (pl. 'fizetési modul'); ha nincs megadva, kategóriánként véletlenszerű")
-    parser.add_argument("--epic-issue-type", default=None, help="Epic issue type neve felülírásra, ha nem 'Epic'")
-    parser.add_argument("--story-issue-type", default=None, help="Story issue type neve felülírásra, ha nem 'Story'")
-    parser.add_argument("--dry-run", action="store_true", help="Csak a tervet írja ki, Jira-ba nem ír")
+    parser.add_argument("--topic", "-o", default=None, help="Opcionális témajavaslat az AI-nak (pl. 'fizetési modul'); ha nincs megadva, kategóriánként véletlenszerű")
+    parser.add_argument("--epic-issue-type", "-E", default=None, help="Epic issue type neve felülírásra, ha nem 'Epic'")
+    parser.add_argument("--story-issue-type", "-S", default=None, help="Story issue type neve felülírásra, ha nem 'Story'")
+    parser.add_argument("--dry-run", "-d", action="store_true", help="Csak a tervet írja ki, Jira-ba nem ír")
     return parser.parse_args(argv)
 
 

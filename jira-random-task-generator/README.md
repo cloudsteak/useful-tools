@@ -67,38 +67,41 @@ kezeléshez (sprint create/start). A projekthez már léteznie kell egy
 
 ```bash
 # 5 önálló user story angolul, DevOps kategóriában, sima backlog issue-ként
-uv run generate-jira-tasks --project DEMO --count 5 --language en --type story --category devops
+uv run generate-jira-tasks -p DEMO -c 5 -l en -t story -k devops
 
 # 3 epic, epicenként 5 story-val, magyarul: prioritás, függőségek, dátumok,
 # egymást átfedő epic-időablakok, sprint
-uv run generate-jira-tasks --project DEMO --count 3 --stories-per-epic 5 --language hu --type epic
+uv run generate-jira-tasks -p DEMO -c 3 -s 5 -l hu -t epic
 
 # Terv kiírása Jira-módosítás nélkül (nem hív írás jellegű API-t)
-uv run generate-jira-tasks --project DEMO --count 3 --type epic --dry-run
+uv run generate-jira-tasks -p DEMO -c 3 -t epic -d
 
 # Epicenként az első elem Spike legyen sima Story helyett
-uv run generate-jira-tasks --project DEMO --count 2 --type epic --first-story-type spike
+uv run generate-jira-tasks -p DEMO -c 2 -t epic -f spike
 
 # Témajavaslat megadása az AI-nak, egyedi issue type nevekkel
-uv run generate-jira-tasks --project DEMO --count 2 --type epic \
-  --topic "fizetési szolgáltató integráció" \
-  --epic-issue-type "Epic" --story-issue-type "Történet"
+uv run generate-jira-tasks -p DEMO -c 2 -t epic \
+  -o "fizetési szolgáltató integráció" \
+  -E "Epic" -S "Történet"
 ```
+
+(Minden kapcsolónak van hosszú és rövid formája is, lásd lentebb.)
 
 ### CLI kapcsolók
 
-| Kapcsoló | Default | Leírás |
-|---|---|---|
-| `--project`, `-p` | *(kötelező)* | Jira projekt kulcs |
-| `--count`, `-c` | `5` | `type=story`: hány önálló story; `type=epic`: hány epic |
-| `--stories-per-epic` | `4` | Epicenként hány user story (csak `type=epic` esetén) |
-| `--language`, `-l` | `hu` | `hu` vagy `en` |
-| `--type`, `-t` | `story` | `epic` vagy `story` |
-| `--category` | `dev` | `dev` (fejlesztési), `test` (tesztelési) vagy `devops` |
-| `--first-story-type` | `story` | Epicenként az első elem típusa: `story`, `spike` vagy `poc` |
-| `--topic` | *(AI választ)* | Opcionális témajavaslat |
-| `--epic-issue-type` / `--story-issue-type` | auto-detektált | Issue type név felülírás, ha az instance-en nem "Epic"/"Story" a név |
-| `--dry-run` | ki | Csak a generált tervet írja ki, Jira-ba nem ír |
+| Kapcsoló | Rövid | Default | Leírás |
+|---|---|---|---|
+| `--project` | `-p` | *(kötelező)* | Jira projekt kulcs |
+| `--count` | `-c` | `5` | `type=story`: hány önálló story; `type=epic`: hány epic |
+| `--stories-per-epic` | `-s` | `4` | Epicenként hány user story (csak `type=epic` esetén) |
+| `--language` | `-l` | `hu` | `hu` vagy `en` |
+| `--type` | `-t` | `story` | `epic` vagy `story` |
+| `--category` | `-k` | `dev` | `dev` (fejlesztési), `test` (tesztelési) vagy `devops` |
+| `--first-story-type` | `-f` | `story` | Epicenként az első elem típusa: `story`, `spike` vagy `poc` |
+| `--topic` | `-o` | *(AI választ)* | Opcionális témajavaslat |
+| `--epic-issue-type` | `-E` | auto-detektált | Issue type név felülírás, ha az instance-en nem "Epic" a név |
+| `--story-issue-type` | `-S` | auto-detektált | Issue type név felülírás, ha az instance-en nem "Story" a név |
+| `--dry-run` | `-d` | ki | Csak a generált tervet írja ki, Jira-ba nem ír |
 
 ## Működési logika
 
