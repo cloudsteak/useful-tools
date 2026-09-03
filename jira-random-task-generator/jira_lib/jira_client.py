@@ -84,13 +84,33 @@ class JiraClient:
         """A Jira instance prioritás listája, magastól az alacsony felé rendezve."""
         return self._get("/rest/api/3/priority")
 
-    def find_field_id(self, name_candidates: list[str]) -> str | None:
-        fields = self._get("/rest/api/3/field")
+    def get_fields(self) -> list[dict]:
+        """A Jira instance összes mezője (system + custom), schema info-val együtt."""
+        return self._get("/rest/api/3/field")
+
+    def find_field_id(self, name_candidates: list[str], fields: list[dict] | None = None) -> str | None:
+        """Mező ID keresése a megjelenített NÉV alapján (locale-/instance-függő,
+        könnyen átnevezhető - ahol lehet, inkább find_field_id_by_schema-t
+        használj, ami a stabil custom field type-ra illeszt)."""
+        fields = fields if fields is not None else self.get_fields()
         lowered = {f["name"].strip().lower(): f["id"] for f in fields}
         for candidate in name_candidates:
             match = lowered.get(candidate.strip().lower())
             if match:
                 return match
+        return None
+
+    def find_field_id_by_schema(
+        self, schema_custom_keys: list[str], fields: list[dict] | None = None
+    ) -> str | None:
+        """Mező ID keresése a custom field STABIL schema típusa alapján
+        (pl. 'com.pyxis.greenhopper.jira:gh-epic-color') - ez nem függ attól,
+        hogy az adott instance-en hogyan nevezték el a mezőt."""
+        fields = fields if fields is not None else self.get_fields()
+        for field in fields:
+            custom_type = (field.get("schema") or {}).get("custom")
+            if custom_type in schema_custom_keys:
+                return field["id"]
         return None
 
     def get_issue_link_types(self) -> list[dict]:

@@ -48,6 +48,9 @@ SPIKE_TYPE_CANDIDATES = ["Spike", "Research Spike"]
 POC_TYPE_CANDIDATES = ["POC", "Proof of Concept", "PoC", "Prototípus"]
 START_DATE_FIELD_CANDIDATES = ["Start date", "Kezdés dátuma", "Kezdő dátum"]
 EPIC_COLOR_FIELD_CANDIDATES = ["Epic Color", "Epic Colour", "Epic colour", "Epic szín"]
+# A klasszikus Epic Color mező stabil, locale-független custom field type kulcsa
+# (GreenHopper/Jira Agile eredetű) - megbízhatóbb, mint a névre illesztés.
+EPIC_COLOR_SCHEMA_CUSTOM_KEYS = ["com.pyxis.greenhopper.jira:gh-epic-color"]
 IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 
 # A felhasználó kérésére ez a felirat mindig angolul jelenik meg, a
@@ -441,18 +444,31 @@ def run(args: argparse.Namespace) -> int:
     start_date_field_id = None
     epic_color_field_id = None
     if args.type == "epic" and not args.dry_run:
-        start_date_field_id = jira.find_field_id(START_DATE_FIELD_CANDIDATES)
+        all_fields = jira.get_fields()
+
+        start_date_field_id = jira.find_field_id(START_DATE_FIELD_CANDIDATES, all_fields)
         if start_date_field_id is None:
             warn(
                 "Nem található 'Start date' mező ezen az instance-en, "
                 "a start dátumokat nem tudom beállítani (csak a due date-et)."
             )
-        epic_color_field_id = jira.find_field_id(EPIC_COLOR_FIELD_CANDIDATES)
+
+        epic_color_field_id = jira.find_field_id_by_schema(
+            EPIC_COLOR_SCHEMA_CUSTOM_KEYS, all_fields
+        ) or jira.find_field_id(EPIC_COLOR_FIELD_CANDIDATES, all_fields)
         if epic_color_field_id is None:
+            near_matches = sorted(
+                {
+                    f["name"]
+                    for f in all_fields
+                    if any(kw in f["name"].lower() for kw in ("color", "colour", "szín"))
+                }
+            )
+            hint = f" Hasonló nevű mezők ezen az instance-en: {', '.join(near_matches)}." if near_matches else ""
             warn(
-                "Nem található 'Epic Color' mező ezen az instance-en (csapat-kezelt "
-                "projekteknél ez app-tulajdonú, API-n keresztül nem írható mező lehet) "
-                "- minden epic a Jira alapértelmezett színét kapja."
+                "Nem található klasszikus 'Epic Color' mező ezen az instance-en (csapat-kezelt "
+                "projekteknél ez app-tulajdonú, API-n keresztül nem írható mező lehet) - minden "
+                f"epic a Jira alapértelmezett színét kapja.{hint}"
             )
 
     if args.type == "epic":

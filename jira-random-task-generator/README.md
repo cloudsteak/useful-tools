@@ -204,11 +204,16 @@ minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési
   kapcsolót használod, de a projektben nincs ilyen nevű issue type
   konfigurálva, a tool figyelmeztet és helyette sima Story-t hoz létre.
 - **Epic szín**: a klasszikus (company-managed) projekteken az "Epic Color"
-  egy sima, auto-detektált custom field, `ghx-label-N` értékekkel, ezt
-  állítja be a tool körbeforgatva epiconként. Csapat-kezelt (team-managed)
+  egy sima custom field, `ghx-label-N` értékekkel, ezt állítja be a tool
+  körbeforgatva epiconként. A mezőt elsősorban a stabil, locale-független
+  custom field type-ja alapján azonosítja (`com.pyxis.greenhopper.jira:
+  gh-epic-color`), csak másodlagosan a megjelenített neve alapján - így
+  akkor is megtalálja, ha a mezőt átnevezték. Csapat-kezelt (team-managed)
   projekteken ez a mező jellemzően nem elérhető (app-tulajdonú, nem
-  szerkeszthető sima REST API-n) - ilyenkor a tool figyelmeztet, de nem áll
-  le, és minden epic a Jira alapértelmezett színét kapja.
+  szerkeszthető sima REST API-n) - ilyenkor a tool figyelmeztet (feltüntetve
+  a "color"/"colour"/"szín" szót tartalmazó hasonló nevű mezőket, ha van
+  ilyen, diagnosztikai segítségnek), de nem áll le, és minden epic a Jira
+  alapértelmezett színét kapja.
 - **Egyetlen aktuális sprint**: mivel Jira-ban egyszerre csak egy sprint
   lehet aktív egy boardon, minden epic első eleme ugyanabba az aktuális
   sprintbe kerül (ez realisztikus: egy sprinten belül több, egymást átfedő
