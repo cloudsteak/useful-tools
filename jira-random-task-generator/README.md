@@ -156,9 +156,10 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic \
    leírás, elfogadási kritériumok, story point, prioritás-rang,
    függőségek), a `--category` alapján tematizálva (dev/test/devops). Minden
    story leírása a szabvány `As a <role>, I want <goal>, so that <benefit>.`
-   sablont követi, kizárólag a `--language`-nek megfelelő nyelven (a
-   "Elfogadási kritériumok:"/"Acceptance criteria:" felirat is ehhez
-   igazodik, nem keveredik nyelv).
+   sablont követi, kizárólag a `--language`-nek megfelelő nyelven (nem
+   keveredik nyelv). Az elfogadási kritériumok listája elé a leírásban
+   mindig az `Acceptance Criteria:` felirat kerül, `--language`-től
+   függetlenül, angolul.
 4. **Epic-időablakok szétosztása**: minden epic egy ~1-2 hetes, véletlenszerű
    hosszúságú időablakot kap; a következő epic mindig néhány nappal
    (véletlenszerűen, de sosem 0 nappal) később indul, mint az előző — így az
