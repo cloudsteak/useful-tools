@@ -47,25 +47,12 @@ STORY_TYPE_CANDIDATES = ["Story", "User Story", "Történet", "Felhasználói t�
 SPIKE_TYPE_CANDIDATES = ["Spike", "Research Spike"]
 POC_TYPE_CANDIDATES = ["POC", "Proof of Concept", "PoC", "Prototípus"]
 START_DATE_FIELD_CANDIDATES = ["Start date", "Kezdés dátuma", "Kezdő dátum"]
-EPIC_COLOR_FIELD_CANDIDATES = [
-    "Epic Color", "Epic Colour", "Epic colour", "Epic szín",
-    "Issue color", "Issue Color", "Issue colour", "Issue Colour",
-]
-# A klasszikus Epic Color mező stabil, locale-független custom field type kulcsa
-# (GreenHopper/Jira Agile eredetű) - megbízhatóbb, mint a névre illesztés.
-EPIC_COLOR_SCHEMA_CUSTOM_KEYS = ["com.pyxis.greenhopper.jira:gh-epic-color"]
 IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 
 # A felhasználó kérésére ez a felirat mindig angolul jelenik meg, a
 # --language kapcsolótól függetlenül (a story tartalma természetesen a
 # választott nyelven generálódik).
 ACCEPTANCE_CRITERIA_LABEL = "Acceptance Criteria:"
-
-# Az epic szín mező pontos írási formátuma (string vs objektum, megengedett
-# értékek) instance-enként/mezőtípusonként eltérhet (klasszikus 'Epic Color'
-# vs újabb 'Issue color' stb.), ezért nem hardcode-oljuk: az első létrehozott
-# epic editmeta-jából (GET /rest/api/3/issue/{key}/editmeta) olvassuk ki a
-# ténylegesen megengedett értékeket, lásd discover_epic_color_choices().
 
 # A klasszikus (company-managed) projekteknél a Jira Agile API a board type-ot
 # 'scrum'-nak jelöli. A csapat-kezelt (team-managed / "next-gen") projekteknél
@@ -210,32 +197,6 @@ def resolve_first_story_type_id(
             "Az epicek első eleme helyette sima Story típussal jön létre."
         )
         return fallback_type_id, fallback_label
-
-
-def discover_epic_color_choices(jira: JiraClient, epic_key: str, field_id: str) -> list | None:
-    """A megadott epic szín mező ténylegesen megengedett értékei a Jira saját
-    editmeta API-jából - így nem kell kitalálni a mező pontos formátumát
-    (a klasszikus 'Epic Color' és az újabb 'Issue color' mező is eltérhet).
-    None, ha a mező egyáltalán nem szerkeszthető ezen az issue-n keresztül
-    (pl. Atlassian app-tulajdonú rendszermező, csak Automation-nel írható)."""
-    try:
-        meta = jira.get_edit_meta(epic_key)
-    except JiraError:
-        return None
-    field_meta = (meta.get("fields") or {}).get(field_id)
-    if field_meta is None:
-        return None
-    return field_meta.get("allowedValues") or []
-
-
-def apply_epic_color(jira: JiraClient, epic_key: str, field_id: str, choice) -> None:
-    """Egy editmeta-ból származó megengedett érték visszaírása a mezőre. A legtöbb
-    Jira select/option mező elfogadja, ha csak az 'id'-t küldjük vissza."""
-    value = {"id": choice["id"]} if isinstance(choice, dict) and "id" in choice else choice
-    try:
-        jira.update_issue(epic_key, {field_id: value})
-    except JiraError as exc:
-        warn(f"{epic_key}: epic szín beállítása sikertelen ({exc}). Kihagyva.")
 
 
 def create_issue_with_optional_fields(
@@ -467,33 +428,12 @@ def run(args: argparse.Namespace) -> int:
         log("[dry-run] Scrum board/sprint beállítás kihagyva")
 
     start_date_field_id = None
-    epic_color_field_id = None
     if args.type == "epic" and not args.dry_run:
-        all_fields = jira.get_fields()
-
-        start_date_field_id = jira.find_field_id(START_DATE_FIELD_CANDIDATES, all_fields)
+        start_date_field_id = jira.find_field_id(START_DATE_FIELD_CANDIDATES)
         if start_date_field_id is None:
             warn(
                 "Nem található 'Start date' mező ezen az instance-en, "
                 "a start dátumokat nem tudom beállítani (csak a due date-et)."
-            )
-
-        epic_color_field_id = jira.find_field_id_by_schema(
-            EPIC_COLOR_SCHEMA_CUSTOM_KEYS, all_fields
-        ) or jira.find_field_id(EPIC_COLOR_FIELD_CANDIDATES, all_fields)
-        if epic_color_field_id is None:
-            near_matches = sorted(
-                {
-                    f["name"]
-                    for f in all_fields
-                    if any(kw in f["name"].lower() for kw in ("color", "colour", "szín"))
-                }
-            )
-            hint = f" Hasonló nevű mezők ezen az instance-en: {', '.join(near_matches)}." if near_matches else ""
-            warn(
-                "Nem található klasszikus 'Epic Color' mező ezen az instance-en (csapat-kezelt "
-                "projekteknél ez app-tulajdonú, API-n keresztül nem írható mező lehet) - minden "
-                f"epic a Jira alapértelmezett színét kapja.{hint}"
             )
 
     if args.type == "epic":
@@ -515,8 +455,6 @@ def run(args: argparse.Namespace) -> int:
         windows = stagger_epic_windows(args.count, base_start, TYPICAL_EPIC_DURATION_DAYS)
 
         created_epics: list[tuple[str, list[str]]] = []
-        epic_color_choices: list | None = None
-        epic_color_discovered = False
 
         for epic_index in range(args.count):
             window_start, window_end = windows[epic_index]
@@ -545,22 +483,6 @@ def run(args: argparse.Namespace) -> int:
                 {"labels": [args.category]},
             )
             log(f"Epic létrehozva: {epic_key} ({window_start.isoformat()} -> {window_end.isoformat()})")
-
-            if epic_color_field_id and not epic_color_discovered:
-                epic_color_discovered = True
-                epic_color_choices = discover_epic_color_choices(jira, epic_key, epic_color_field_id)
-                if not epic_color_choices:
-                    warn(
-                        f"A(z) '{epic_color_field_id}' epic szín mező nem szerkeszthető a sima "
-                        "Jira issue API-n keresztül ezen az instance-en (valószínűleg Atlassian "
-                        "app-tulajdonú rendszermező, pl. az újabb 'Issue color' - ez csak Jira "
-                        "Automation-nel írható). Az epicek a Jira alapértelmezett színét kapják."
-                    )
-            if epic_color_field_id and epic_color_choices:
-                apply_epic_color(
-                    jira, epic_key, epic_color_field_id,
-                    epic_color_choices[epic_index % len(epic_color_choices)],
-                )
 
             create_planned_issues(
                 jira, args.project, planned, story_type_id, first_story_type_id,

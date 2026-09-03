@@ -169,13 +169,9 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic \
 5. Epiconként a tool a függőség-gráfot ciklusmentesíti és topológiai
    sorrendbe rendezi, ez alapján osztja ki a story-k start/due dátumait a
    saját epic-időablakán belül.
-6. Jira-ban létrejön minden Epic — ha a projekten létezik a klasszikus
-   "Epic Color" mező, mindegyik epic más színt kap, egy 14 elemű palettán
-   körbeforgatva (`ghx-label-1`..`ghx-label-14`), hogy a board-on/
-   backlogban vizuálisan is megkülönböztethetők legyenek egymástól —, majd
-   alattuk a story-k (`parent` mezővel az Epichez kötve, `labels` mezőben a
-   kategóriával), rájuk a `Blocks`/`is blocked by` linkek a függőségek
-   alapján.
+6. Jira-ban létrejön minden Epic, majd alattuk a story-k (`parent` mezővel
+   az Epichez kötve, `labels` mezőben a kategóriával), rájuk a
+   `Blocks`/`is blocked by` linkek a függőségek alapján.
 7. Epiconként a függőség nélküli, topológiailag legelső elem — típusa a
    `--first-story-type` szerint Story/Spike/POC — bekerül az aktuális
    sprintbe és át lesz állítva "In Progress"-re; a többi a backlogban marad
@@ -203,20 +199,11 @@ minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési
 - **Spike/POC issue type**: ha a `--first-story-type spike` vagy `poc`
   kapcsolót használod, de a projektben nincs ilyen nevű issue type
   konfigurálva, a tool figyelmeztet és helyette sima Story-t hoz létre.
-- **Epic szín**: a klasszikus "Epic Color" és az újabb "Issue color" mezőt is
-  megpróbálja megtalálni - elsőként a stabil, locale-független custom field
-  type-ja alapján (`com.pyxis.greenhopper.jira:gh-epic-color`), másodsorban a
-  megjelenített neve alapján (mindkét mezőnév-variánsra). Ha megtalálja, az
-  első létrehozott epicen lekérdezi a Jira **editmeta** API-jával
-  (`GET /rest/api/3/issue/{key}/editmeta`), hogy ténylegesen milyen értékek
-  engedélyezettek rajta - így nem kell kitalálni a mező pontos írási
-  formátumát (ez instance-enként/mezőtípusonként eltérhet), és a talált
-  értékeket körbeforgatva osztja ki epiconként. Ha a mező egyáltalán nincs az
-  editmeta-ban (pl. Atlassian app-tulajdonú rendszermező, ami csak Jira
-  Automation-nel írható), vagy sehol nem található, a tool egyetlen
-  figyelmeztetéssel jelzi (feltüntetve a hasonló nevű mezőket
-  diagnosztikai segítségnek), de nem áll le - ilyenkor minden epic a Jira
-  alapértelmezett színét kapja.
+- **Epic szín**: a tool nem állítja be az epic/issue színét. A klasszikus
+  "Epic Color" mező helyét sok Jira Cloud instance-en már átvette az újabb
+  "Issue color", ami Atlassian app-tulajdonú rendszermező - nem szerkeszthető
+  a sima Jira REST API-n keresztül, csak Jira Automation-nel. Emiatt minden
+  epic a Jira alapértelmezett színét kapja.
 - **Egyetlen aktuális sprint**: mivel Jira-ban egyszerre csak egy sprint
   lehet aktív egy boardon, minden epic első eleme ugyanabba az aktuális
   sprintbe kerül (ez realisztikus: egy sprinten belül több, egymást átfedő

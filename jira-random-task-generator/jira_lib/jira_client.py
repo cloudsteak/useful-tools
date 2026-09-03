@@ -89,28 +89,13 @@ class JiraClient:
         return self._get("/rest/api/3/field")
 
     def find_field_id(self, name_candidates: list[str], fields: list[dict] | None = None) -> str | None:
-        """Mező ID keresése a megjelenített NÉV alapján (locale-/instance-függő,
-        könnyen átnevezhető - ahol lehet, inkább find_field_id_by_schema-t
-        használj, ami a stabil custom field type-ra illeszt)."""
+        """Mező ID keresése a megjelenített NÉV alapján."""
         fields = fields if fields is not None else self.get_fields()
         lowered = {f["name"].strip().lower(): f["id"] for f in fields}
         for candidate in name_candidates:
             match = lowered.get(candidate.strip().lower())
             if match:
                 return match
-        return None
-
-    def find_field_id_by_schema(
-        self, schema_custom_keys: list[str], fields: list[dict] | None = None
-    ) -> str | None:
-        """Mező ID keresése a custom field STABIL schema típusa alapján
-        (pl. 'com.pyxis.greenhopper.jira:gh-epic-color') - ez nem függ attól,
-        hogy az adott instance-en hogyan nevezték el a mezőt."""
-        fields = fields if fields is not None else self.get_fields()
-        for field in fields:
-            custom_type = (field.get("schema") or {}).get("custom")
-            if custom_type in schema_custom_keys:
-                return field["id"]
         return None
 
     def get_issue_link_types(self) -> list[dict]:
@@ -180,12 +165,6 @@ class JiraClient:
 
     def update_issue(self, issue_key: str, fields: dict) -> None:
         self._put(f"/rest/api/3/issue/{issue_key}", {"fields": fields})
-
-    def get_edit_meta(self, issue_key: str) -> dict:
-        """Az adott issue-n ténylegesen szerkeszthető mezők (és pl. select-típusú
-        mezőknél a megengedett értékek) - így egy mező pontos írási formátumát
-        nem kell kitalálni, a Jira maga mondja meg."""
-        return self._get(f"/rest/api/3/issue/{issue_key}/editmeta")
 
     def get_transitions(self, issue_key: str) -> list[dict]:
         data = self._get(f"/rest/api/3/issue/{issue_key}/transitions")
