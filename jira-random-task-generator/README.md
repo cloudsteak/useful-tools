@@ -27,6 +27,9 @@ Konfigurálható:
   létrehozott issue-k `labels` mezőjét is
 - **sprint állapot**: a projekt mindig Scrum módban dolgozik; ha nincs futó
   sprint a Scrum boardon, a tool létrehoz és elindít egyet
+- **kapcsolati teszt** (`--check-connection`): tartalom generálása és bármi
+  Jira-módosítás nélkül ellenőrzi, hogy a Jira és a Vertex AI integráció
+  elérhető-e (hitelesítés, projekt/board hozzáférés, modell elérhetőség)
 
 ## Telepítés (uv)
 
@@ -52,11 +55,31 @@ fájlból a munkakönyvtárban, `KULCS=érték` formátumban):
 | `GOOGLE_CLOUD_PROJECT` | igen | GCP projekt ID (Vertex AI-hoz) |
 | `GOOGLE_CLOUD_LOCATION` | nem | Vertex AI régió (default: `us-central1`) |
 | `GEMINI_MODEL` | nem | Gemini modell név (default: `gemini-2.5-pro`) |
+| `GEMINI_LOCATION` | nem | Explicit Gemini location felülírás (lásd lentebb) |
 
 A Vertex AI hívásokhoz szabványos Google Application Default Credentials
 (ADC) szükséges: `gcloud auth application-default login`, vagy
 `GOOGLE_APPLICATION_CREDENTIALS` egy service account JSON-ra mutatva. A
 service accountnak `Vertex AI User` szerepkör kell.
+
+### Globális vs. regionális Gemini modellek
+
+Egyes Gemini modellek csak a **globális** (`global`) Vertex AI végponton
+érhetők el, mások **regionálisan** (pl. `us-central1`) — ez modellenként és
+időben is változhat, ezért a tool ezt automatikusan kezeli, nem kell előre
+tudnod, melyik a `GEMINI_MODEL` esetében:
+
+1. Alapból a `GOOGLE_CLOUD_LOCATION` (default `us-central1`) location-nel
+   próbálkozik.
+2. Ha a modell ott nem érhető el, **automatikusan átvált `global`-ra**, és a
+   további hívásoknál már ezt használja.
+3. Ha egy adott modellről (pl. `gemini-3.5-flash-lite`) tudod, hogy csak
+   globálisan érhető el, a tallózgatás elkerülésére beállíthatod explicit
+   módon: `GEMINI_LOCATION=global`. Ilyenkor a tool szigorúan ezt a
+   location-t használja, fallback nélkül.
+
+A ténylegesen használt location a futás közbeni logban, illetve a
+`--check-connection` kimenetében is látszik.
 
 A Jira felhasználónak jogosultnak kell lennie a célprojektben issue-k
 létrehozására, a project adminisztrátorának pedig a board/sprint
@@ -83,6 +106,10 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic -f spike
 uv run generate-jira-tasks -p DEMO -c 2 -t epic \
   -o "fizetési szolgáltató integráció" \
   -E "Epic" -S "Történet"
+
+# Kapcsolati teszt: csak azt ellenőrzi, hogy a Jira és a Vertex AI elérhető-e
+# (nem generál tartalmat, nem ír semmit Jira-ba)
+uv run generate-jira-tasks -p DEMO -x
 ```
 
 (Minden kapcsolónak van hosszú és rövid formája is, lásd lentebb.)
@@ -102,6 +129,7 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic \
 | `--epic-issue-type` | `-E` | auto-detektált | Issue type név felülírás, ha az instance-en nem "Epic" a név |
 | `--story-issue-type` | `-S` | auto-detektált | Issue type név felülírás, ha az instance-en nem "Story" a név |
 | `--dry-run` | `-d` | ki | Csak a generált tervet írja ki, Jira-ba nem ír |
+| `--check-connection` | `-x` | ki | Csak a Jira + Vertex AI kapcsolatot teszteli, majd kilép (nem generál, nem ír) |
 
 ## Működési logika
 
@@ -130,6 +158,12 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic \
    `--first-story-type` szerint Story/Spike/POC — bekerül az aktuális
    sprintbe és át lesz állítva "In Progress"-re; a többi a backlogban marad
    alapértelmezett ("To Do") státuszban.
+
+`--check-connection` esetén a tool a fenti lépések helyett csak három
+olvasás-jellegű ellenőrzést végez, és utána azonnal kilép: Jira hitelesítés
+(`/myself`), a megadott projekt és Scrum board elérhetősége, valamint egy
+minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési kód
+`0`, ha minden ellenőrzés sikeres, egyébként `1`.
 
 ## Korlátok, amikről tudni kell
 

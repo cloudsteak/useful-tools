@@ -9,6 +9,11 @@ from google.genai import types
 
 from .models import EpicPlan, StandaloneTaskList
 
+
+class AiError(RuntimeError):
+    """Vertex AI hívás sikertelen (elsődleges és - ha volt - fallback location-nel is)."""
+
+
 _LANGUAGE_NAMES = {"hu": "magyar", "en": "English"}
 
 _CATEGORY_LABELS = {
@@ -72,21 +77,85 @@ def _pick_topics(category: str, count: int) -> list[str]:
 
 
 class AiClient:
-    def __init__(self, project: str, location: str, model: str) -> None:
-        self._client = genai.Client(vertexai=True, project=project, location=location)
+    """Vertex AI (Gemini) kliens, ami globális ÉS regionális modellekkel is
+    működik: egyes Gemini modellek (pl. bizonyos flash-lite verziók) csak a
+    'global' location-ben érhetők el, mások regionálisan. Az elsődleges
+    location-nel próbálkozunk, és ha az API azt jelzi, hogy a modell ott nem
+    érhető el, automatikusan átváltunk a fallback location-re (jellemzően
+    'global') - lásd Config.ai_locations()."""
+
+    def __init__(
+        self,
+        project: str,
+        primary_location: str,
+        fallback_location: str | None,
+        model: str,
+    ) -> None:
+        self._project = project
+        self._primary_location = primary_location
+        self._fallback_location = fallback_location
         self._model = model
+        self._clients: dict[str, genai.Client] = {}
+        self._active_location = primary_location
+
+    @property
+    def active_location(self) -> str:
+        return self._active_location
+
+    def _client_for(self, location: str) -> genai.Client:
+        if location not in self._clients:
+            self._clients[location] = genai.Client(
+                vertexai=True, project=self._project, location=location
+            )
+        return self._clients[location]
+
+    def _call(self, prompt: str, config: types.GenerateContentConfig) -> str:
+        try:
+            response = self._client_for(self._active_location).models.generate_content(
+                model=self._model, contents=prompt, config=config
+            )
+            return response.text
+        except Exception as primary_exc:
+            if not self._fallback_location or self._active_location == self._fallback_location:
+                raise AiError(
+                    f"Vertex AI hívás sikertelen (location='{self._active_location}', "
+                    f"modell='{self._model}'): {primary_exc}"
+                ) from primary_exc
+            try:
+                response = self._client_for(self._fallback_location).models.generate_content(
+                    model=self._model, contents=prompt, config=config
+                )
+            except Exception as fallback_exc:
+                raise AiError(
+                    f"Vertex AI hívás sikertelen mind '{self._primary_location}' "
+                    f"(ok: {primary_exc}), mind '{self._fallback_location}' location-nel "
+                    f"(modell='{self._model}', ok: {fallback_exc})."
+                ) from fallback_exc
+            # a fallback location bevált - a további hívásoknál már ezzel próbálkozunk elsőként
+            self._active_location = self._fallback_location
+            return response.text
 
     def _generate(self, prompt: str, response_schema: type) -> str:
-        response = self._client.models.generate_content(
-            model=self._model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=response_schema,
-                temperature=1.0,
-            ),
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_schema,
+            temperature=1.0,
         )
-        return response.text
+        return self._call(prompt, config)
+
+    def test_connection(self) -> tuple[bool, str]:
+        """Minimális, olcsó hívás a Vertex AI ellenőrzésére (kapcsolati teszt).
+        Nem generál semmilyen strukturált tartalmat, csak azt ellenőrzi, hogy a
+        megadott projekt/location(ok)/modell kombináció elérhető-e."""
+        config = types.GenerateContentConfig(temperature=0.0, max_output_tokens=16)
+        try:
+            text = self._call("Válaszolj pontosan ennyivel: OK", config)
+        except AiError as exc:
+            return False, str(exc)
+        return True, (
+            f"Vertex AI OK (project='{self._project}', location='{self._active_location}', "
+            f"modell='{self._model}'), válasz: {text.strip()!r}"
+        )
 
     def generate_epic_with_stories(
         self,

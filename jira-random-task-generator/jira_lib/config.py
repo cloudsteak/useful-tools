@@ -44,6 +44,7 @@ class Config:
     gcp_project: str
     gcp_location: str
     gemini_model: str
+    gemini_location_override: str | None
 
     @classmethod
     def load(cls) -> "Config":
@@ -57,4 +58,21 @@ class Config:
             or "us-central1",
             gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-pro").strip()
             or "gemini-2.5-pro",
+            gemini_location_override=os.environ.get("GEMINI_LOCATION", "").strip() or None,
         )
+
+    def ai_locations(self) -> tuple[str, str | None]:
+        """(elsődleges, fallback) Vertex AI location pár a Gemini hívásokhoz.
+
+        Egyes Gemini modellek csak 'global' location-ben érhetők el, mások
+        regionálisan (pl. 'us-central1'). Ha a felhasználó explicit
+        GEMINI_LOCATION-t állított be, azt szigorúan betartjuk (nincs
+        automatikus fallback). Egyébként a GOOGLE_CLOUD_LOCATION-t próbáljuk
+        elsőként, és ha a modell ott nem érhető el, a kliens automatikusan
+        'global'-ra vált át.
+        """
+        if self.gemini_location_override:
+            return self.gemini_location_override, None
+        if self.gcp_location.strip().lower() == "global":
+            return "global", None
+        return self.gcp_location, "global"

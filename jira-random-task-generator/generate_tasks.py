@@ -15,10 +15,18 @@ realisztikus task-okat:
 A tool a projekt Scrum board/sprint állapotát is beállítja: ha nincs futó
 sprint, létrehoz és elindít egyet.
 
+A Vertex AI hívások automatikusan kezelik a globális és a regionális Gemini
+modelleket is: elsőként a GOOGLE_CLOUD_LOCATION (default us-central1)
+location-nel próbálkozik, és ha a modell ott nem érhető el, automatikusan
+átvált 'global'-ra (lásd README / GEMINI_LOCATION).
+
 Használat:
     uv run generate-jira-tasks --project DEMO --count 2 --stories-per-epic 5 \
         --language hu --type epic --category dev
     uv run generate-jira-tasks --project DEMO --count 8 --language en --type story --dry-run
+
+    # Csak a Jira + Vertex AI kapcsolat ellenőrzése, tartalom generálása nélkül
+    uv run generate-jira-tasks --project DEMO --check-connection
 """
 
 from __future__ import annotations
@@ -27,7 +35,7 @@ import argparse
 import sys
 from datetime import date, timedelta
 
-from jira_lib.ai_client import AiClient
+from jira_lib.ai_client import AiClient, AiError
 from jira_lib.config import Config, ConfigError
 from jira_lib.jira_client import JiraClient, JiraError, bullet_list_adf, to_adf
 from jira_lib.models import PlannedIssue
@@ -81,6 +89,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--epic-issue-type", "-E", default=None, help="Epic issue type neve felülírásra, ha nem 'Epic'")
     parser.add_argument("--story-issue-type", "-S", default=None, help="Story issue type neve felülírásra, ha nem 'Story'")
     parser.add_argument("--dry-run", "-d", action="store_true", help="Csak a tervet írja ki, Jira-ba nem ír")
+    parser.add_argument(
+        "--check-connection", "-x", action="store_true",
+        help="Csak a Jira és a Vertex AI kapcsolatot teszteli (nem generál, nem ír semmit), majd kilép",
+    )
     return parser.parse_args(argv)
 
 
@@ -287,7 +299,70 @@ def start_first_story(jira: JiraClient, planned: list[PlannedIssue], sprint: dic
         warn(f"{first.jira_key}: nem található 'In Progress' jellegű transition.")
 
 
+def check_connection(args: argparse.Namespace) -> int:
+    """Kapcsolati teszt: kizárólag azt ellenőrzi, hogy a Jira és a Vertex AI
+    integráció elérhető és helyesen konfigurált-e. Nem generál tartalmat, és
+    semmit nem hoz létre vagy módosít Jira-ban."""
+    try:
+        config = Config.load()
+    except ConfigError as exc:
+        log(f"Konfigurációs hiba: {exc}")
+        return 2
+
+    ok = True
+
+    print("== Jira kapcsolat ==")
+    jira: JiraClient | None
+    try:
+        jira = JiraClient(config.jira_base_url, config.jira_email, config.jira_api_token)
+        me = jira.get_current_user()
+        who = me.get("displayName") or me.get("emailAddress") or "?"
+        print(f"  [OK] Hitelesítve mint: {who} ({config.jira_base_url})")
+    except JiraError as exc:
+        ok = False
+        jira = None
+        print(f"  [HIBA] Jira hitelesítés sikertelen: {exc}")
+
+    if jira is not None:
+        try:
+            project = jira.get_project(args.project)
+            print(f"  [OK] Projekt elérhető: {project['key']} - {project.get('name', '')}")
+        except JiraError as exc:
+            ok = False
+            print(f"  [HIBA] Projekt '{args.project}' nem érhető el: {exc}")
+
+        try:
+            boards = jira.get_boards_for_project(args.project)
+            scrum_boards = [b for b in boards if b.get("type") == "scrum"]
+            if scrum_boards:
+                print(
+                    f"  [OK] Scrum board található: {scrum_boards[0].get('name')} "
+                    f"(id={scrum_boards[0].get('id')})"
+                )
+            else:
+                found = ", ".join(sorted({b.get("type", "?") for b in boards})) or "nincs board"
+                print(f"  [FIGYELEM] Nincs Scrum board a projekthez (elérhető típus(ok): {found})")
+        except JiraError as exc:
+            ok = False
+            print(f"  [HIBA] Board lekérdezés sikertelen: {exc}")
+
+    print("\n== Vertex AI (Gemini) kapcsolat ==")
+    primary_location, fallback_location = config.ai_locations()
+    location_desc = primary_location if not fallback_location else f"{primary_location} (fallback: {fallback_location})"
+    print(f"  Konfiguráció: project='{config.gcp_project}', location={location_desc}, modell='{config.gemini_model}'")
+    ai = AiClient(config.gcp_project, primary_location, fallback_location, config.gemini_model)
+    success, message = ai.test_connection()
+    print(f"  [{'OK' if success else 'HIBA'}] {message}")
+    ok = ok and success
+
+    print("\n" + ("Minden ellenőrzés sikeres." if ok else "Volt sikertelen ellenőrzés, lásd fent."))
+    return 0 if ok else 1
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.check_connection:
+        return check_connection(args)
+
     try:
         config = Config.load()
     except ConfigError as exc:
@@ -295,7 +370,7 @@ def run(args: argparse.Namespace) -> int:
         return 2
 
     jira = JiraClient(config.jira_base_url, config.jira_email, config.jira_api_token)
-    ai = AiClient(config.gcp_project, config.gcp_location, config.gemini_model)
+    ai = AiClient(config.gcp_project, *config.ai_locations(), config.gemini_model)
 
     try:
         project = jira.get_project(args.project)
@@ -431,6 +506,9 @@ def main() -> None:
         sys.exit(run(args))
     except JiraError as exc:
         log(f"Jira hiba: {exc}")
+        sys.exit(1)
+    except AiError as exc:
+        log(f"Vertex AI hiba: {exc}")
         sys.exit(1)
 
 

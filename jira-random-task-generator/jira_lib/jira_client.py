@@ -44,6 +44,10 @@ class JiraClient:
 
     # -- projekt / metaadat ------------------------------------------------------
 
+    def get_current_user(self) -> dict:
+        """A hitelesített Jira felhasználó adatai - kapcsolati teszthez."""
+        return self._get("/rest/api/3/myself")
+
     def get_project(self, project_key: str) -> dict:
         return self._get(f"/rest/api/3/project/{project_key}")
 
