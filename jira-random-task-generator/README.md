@@ -169,8 +169,9 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic \
 5. Epiconként a tool a függőség-gráfot ciklusmentesíti és topológiai
    sorrendbe rendezi, ez alapján osztja ki a story-k start/due dátumait a
    saját epic-időablakán belül.
-6. Jira-ban létrejön minden Epic — mindegyik más Jira epic-színt kap, egy
-   9 elemű palettán körbeforgatva (`color_1`..`color_9`), hogy a board-on/
+6. Jira-ban létrejön minden Epic — ha a projekten létezik a klasszikus
+   "Epic Color" mező, mindegyik epic más színt kap, egy 14 elemű palettán
+   körbeforgatva (`ghx-label-1`..`ghx-label-14`), hogy a board-on/
    backlogban vizuálisan is megkülönböztethetők legyenek egymástól —, majd
    alattuk a story-k (`parent` mezővel az Epichez kötve, `labels` mezőben a
    kategóriával), rájuk a `Blocks`/`is blocked by` linkek a függőségek
@@ -202,10 +203,12 @@ minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési
 - **Spike/POC issue type**: ha a `--first-story-type spike` vagy `poc`
   kapcsolót használod, de a projektben nincs ilyen nevű issue type
   konfigurálva, a tool figyelmeztet és helyette sima Story-t hoz létre.
-- **Epic szín**: ha az instance/projekt nem támogatja a Jira Software
-  epic-szín API-t (`PUT /rest/agile/1.0/epic/{key}/color`), a tool
-  figyelmeztet, de nem áll le - az epicek ilyenkor a Jira alapértelmezett
-  színét kapják.
+- **Epic szín**: a klasszikus (company-managed) projekteken az "Epic Color"
+  egy sima, auto-detektált custom field, `ghx-label-N` értékekkel, ezt
+  állítja be a tool körbeforgatva epiconként. Csapat-kezelt (team-managed)
+  projekteken ez a mező jellemzően nem elérhető (app-tulajdonú, nem
+  szerkeszthető sima REST API-n) - ilyenkor a tool figyelmeztet, de nem áll
+  le, és minden epic a Jira alapértelmezett színét kapja.
 - **Egyetlen aktuális sprint**: mivel Jira-ban egyszerre csak egy sprint
   lehet aktív egy boardon, minden epic első eleme ugyanabba az aktuális
   sprintbe kerül (ez realisztikus: egy sprinten belül több, egymást átfedő

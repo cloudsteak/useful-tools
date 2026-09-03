@@ -47,6 +47,7 @@ STORY_TYPE_CANDIDATES = ["Story", "User Story", "Történet", "Felhasználói t�
 SPIKE_TYPE_CANDIDATES = ["Spike", "Research Spike"]
 POC_TYPE_CANDIDATES = ["POC", "Proof of Concept", "PoC", "Prototípus"]
 START_DATE_FIELD_CANDIDATES = ["Start date", "Kezdés dátuma", "Kezdő dátum"]
+EPIC_COLOR_FIELD_CANDIDATES = ["Epic Color", "Epic Colour", "Epic colour", "Epic szín"]
 IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 
 # A felhasználó kérésére ez a felirat mindig angolul jelenik meg, a
@@ -54,11 +55,15 @@ IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 # választott nyelven generálódik).
 ACCEPTANCE_CRITERIA_LABEL = "Acceptance Criteria:"
 
-# A Jira Software Agile API dokumentált epic szín kulcsai. Több epic esetén
-# körbeforgatva osztjuk ki, hogy a board-on/backlogban vizuálisan is
-# megkülönböztethetők legyenek egymástól (különben a Jira minden epicnek
-# ugyanazt az alapértelmezett színt adná).
-EPIC_COLOR_KEYS = [f"color_{i}" for i in range(1, 10)]
+# A klasszikus (company-managed) projekteknél az "Epic Color" egy sima custom
+# field (com.pyxis.greenhopper.jira:gh-epic-color), 'ghx-label-1'..'ghx-label-14'
+# értékekkel. Ez a Jira REST API v3 sima issue update végpontján (PUT
+# /rest/api/3/issue/{key}) írható, NEM egy külön Agile API végponton (az a
+# 'PUT /rest/agile/1.0/epic/{key}/color' csak Jira Server/Data Center-en
+# létezik, Jira Cloud-on nincs ilyen route). Több epic esetén körbeforgatva
+# osztjuk ki, hogy a board-on/backlogban vizuálisan is megkülönböztethetők
+# legyenek egymástól.
+EPIC_COLOR_VALUES = [f"ghx-label-{i}" for i in range(1, 15)]
 
 # A klasszikus (company-managed) projekteknél a Jira Agile API a board type-ot
 # 'scrum'-nak jelöli. A csapat-kezelt (team-managed / "next-gen") projekteknél
@@ -434,12 +439,20 @@ def run(args: argparse.Namespace) -> int:
         log("[dry-run] Scrum board/sprint beállítás kihagyva")
 
     start_date_field_id = None
+    epic_color_field_id = None
     if args.type == "epic" and not args.dry_run:
         start_date_field_id = jira.find_field_id(START_DATE_FIELD_CANDIDATES)
         if start_date_field_id is None:
             warn(
                 "Nem található 'Start date' mező ezen az instance-en, "
                 "a start dátumokat nem tudom beállítani (csak a due date-et)."
+            )
+        epic_color_field_id = jira.find_field_id(EPIC_COLOR_FIELD_CANDIDATES)
+        if epic_color_field_id is None:
+            warn(
+                "Nem található 'Epic Color' mező ezen az instance-en (csapat-kezelt "
+                "projekteknél ez app-tulajdonú, API-n keresztül nem írható mező lehet) "
+                "- minden epic a Jira alapértelmezett színét kapja."
             )
 
     if args.type == "epic":
@@ -478,6 +491,10 @@ def run(args: argparse.Namespace) -> int:
                 print_plan(planned, epic_plan.epic_title, (window_start, window_end))
                 continue
 
+            epic_optional_fields: dict = {"labels": [args.category]}
+            if epic_color_field_id:
+                epic_optional_fields[epic_color_field_id] = EPIC_COLOR_VALUES[epic_index % len(EPIC_COLOR_VALUES)]
+
             epic_key = create_issue_with_optional_fields(
                 jira,
                 {
@@ -486,12 +503,8 @@ def run(args: argparse.Namespace) -> int:
                     "summary": epic_plan.epic_title,
                     "description": to_adf(epic_plan.epic_description),
                 },
-                {"labels": [args.category]},
+                epic_optional_fields,
             )
-            try:
-                jira.set_epic_color(epic_key, EPIC_COLOR_KEYS[epic_index % len(EPIC_COLOR_KEYS)])
-            except JiraError as exc:
-                warn(f"{epic_key}: epic szín beállítása sikertelen ({exc}). Kihagyva.")
             log(f"Epic létrehozva: {epic_key} ({window_start.isoformat()} -> {window_end.isoformat()})")
 
             create_planned_issues(
