@@ -8,3 +8,4 @@
 - [4. Upload Videos to S3](upload-videos-to-s3/README.md)
 - [5. Set S3 Download](set-s3-download/README.md)
 - [6. Rekordbox Export](rekordbox-export/README.md)
+- [7. Jira Random Task Generator](jira-random-task-generator/README.md)
