@@ -181,11 +181,16 @@ minimális Vertex AI hívás (a ténylegesen működő location-nel). Kilépési
 ## Korlátok, amikről tudni kell
 
 - **Csak Scrum**: a tool feltételezi, hogy a projekt Scrum módban dolgozik,
-  és a projekthez tartozik (vagy létrehozható) egy Scrum board. A Jira
-  Cloud API nem támogatja egy meglévő board típusának (kanban → scrum)
-  API-n keresztüli átalakítását — ha a projekthez nincs Scrum board, a tool
-  figyelmeztet és sprint-kezelés nélkül, sima backlog issue-ként hozza létre
-  a task-okat (ilyenkor hozz létre egy Scrum boardot a Jira felületén).
+  és a projekthez tartozik (vagy létrehozható) egy Scrum-kompatibilis board.
+  Klasszikus (company-managed) projekteknél ez egy `scrum` típusú board;
+  csapat-kezelt (team-managed) projekteknél a Jira Agile API mindig `simple`
+  típusúnak jelöli a boardot, ezt is elfogadja a tool, de csak akkor tud
+  ténylegesen sprintet kezelni rajta, ha a **Sprints funkció be van
+  kapcsolva** (Project settings → Features → Sprints). A Jira Cloud API nem
+  támogatja egy meglévő board típusának (kanban → scrum) API-n keresztüli
+  átalakítását — ha nincs Scrum-kompatibilis board, vagy a Sprints funkció
+  nincs bekapcsolva rajta, a tool figyelmeztet és sprint-kezelés nélkül,
+  sima backlog issue-ként hozza létre a task-okat.
 - **Spike/POC issue type**: ha a `--first-story-type spike` vagy `poc`
   kapcsolót használod, de a projektben nincs ilyen nevű issue type
   konfigurálva, a tool figyelmeztet és helyette sima Story-t hoz létre.

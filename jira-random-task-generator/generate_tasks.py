@@ -49,6 +49,13 @@ POC_TYPE_CANDIDATES = ["POC", "Proof of Concept", "PoC", "Prototípus"]
 START_DATE_FIELD_CANDIDATES = ["Start date", "Kezdés dátuma", "Kezdő dátum"]
 IN_PROGRESS_TRANSITION_CANDIDATES = ["in progress", "folyamatban", "elkezdve"]
 
+# A klasszikus (company-managed) projekteknél a Jira Agile API a board type-ot
+# 'scrum'-nak jelöli. A csapat-kezelt (team-managed / "next-gen") projekteknél
+# viszont mindig 'simple' a type - attól függetlenül, hogy be van-e kapcsolva
+# rajta a Sprints funkció -, ezért ezt is Scrum-kompatibilisnek kell tekinteni,
+# és ténylegesen le kell kérdezni a sprinteket, hogy kiderüljön, működik-e.
+SCRUM_COMPATIBLE_BOARD_TYPES = ("scrum", "simple")
+
 FIRST_STORY_TYPE_CANDIDATES = {
     "spike": SPIKE_TYPE_CANDIDATES,
     "poc": POC_TYPE_CANDIDATES,
@@ -101,24 +108,34 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def ensure_scrum_board_and_sprint(jira: JiraClient, project_key: str) -> tuple[dict | None, dict | None]:
-    """A projekt mindig Scrum módban dolgozik: megkeresi a projekt Scrum boardját,
+    """A projekt mindig Scrum módban dolgozik: megkeresi a projekt Scrum-kompatibilis
+    boardját (klasszikus Scrum vagy csapat-kezelt 'simple' típusú, Sprints funkcióval),
     és ha nincs futó sprint, létrehoz és elindít egyet."""
     boards = jira.get_boards_for_project(project_key)
-    matching = [b for b in boards if b.get("type") == "scrum"]
+    matching = [b for b in boards if b.get("type") in SCRUM_COMPATIBLE_BOARD_TYPES]
 
     if not matching:
         available = ", ".join(sorted({b.get("type", "?") for b in boards})) or "nincs board"
         warn(
-            f"Nem található Scrum board a(z) {project_key} projekthez "
-            f"(elérhető típusok: {available}). A Jira Cloud API nem támogatja meglévő "
-            "projekt board-típusának API-n keresztüli átváltását - hozz létre egy Scrum "
-            "boardot a projekthez a Jira felületén. Addig a sprint-kezelést kihagyom, "
-            "és a task-ok sima backlog issue-ként jönnek létre."
+            f"Nem található Scrum-kompatibilis board a(z) {project_key} projekthez "
+            f"(elérhető típusok: {available}). Hozz létre egy Scrum boardot a projekthez, "
+            "vagy csapat-kezelt (team-managed) projekt esetén kapcsold be a Sprints "
+            "funkciót (Project settings → Features → Sprints). Addig a sprint-kezelést "
+            "kihagyom, és a task-ok sima backlog issue-ként jönnek létre."
         )
         return None, None
 
     board = matching[0]
-    active = jira.get_sprints_for_board(board["id"], state="active")
+    try:
+        active = jira.get_sprints_for_board(board["id"], state="active")
+    except JiraError as exc:
+        warn(
+            f"A(z) '{board.get('name')}' boardon nem érhető el a Sprints funkció ({exc}). "
+            "Csapat-kezelt (team-managed) projekt esetén kapcsold be: Project settings → "
+            "Features → Sprints. Addig a sprint-kezelést kihagyom, és a task-ok sima "
+            "backlog issue-ként jönnek létre."
+        )
+        return board, None
     if active:
         return board, active[0]
 
@@ -337,15 +354,22 @@ def check_connection(args: argparse.Namespace) -> int:
 
         try:
             boards = jira.get_boards_for_project(args.project)
-            scrum_boards = [b for b in boards if b.get("type") == "scrum"]
-            if scrum_boards:
-                print(
-                    f"  [OK] Scrum board található: {scrum_boards[0].get('name')} "
-                    f"(id={scrum_boards[0].get('id')})"
-                )
-            else:
+            scrum_boards = [b for b in boards if b.get("type") in SCRUM_COMPATIBLE_BOARD_TYPES]
+            if not scrum_boards:
                 found = ", ".join(sorted({b.get("type", "?") for b in boards})) or "nincs board"
-                print(f"  [FIGYELEM] Nincs Scrum board a projekthez (elérhető típus(ok): {found})")
+                print(f"  [FIGYELEM] Nincs Scrum-kompatibilis board a projekthez (elérhető típus(ok): {found})")
+            else:
+                board = scrum_boards[0]
+                kind = " (csapat-kezelt/'simple' board)" if board.get("type") == "simple" else ""
+                try:
+                    jira.get_sprints_for_board(board["id"], state="active")
+                    print(f"  [OK] Scrum-kompatibilis board, Sprints elérhető: {board.get('name')}{kind}")
+                except JiraError as exc:
+                    print(
+                        f"  [FIGYELEM] Board megvan ({board.get('name')}{kind}), de a Sprints funkció "
+                        f"nem érhető el rajta ({exc}). Csapat-kezelt projekt esetén kapcsold be: "
+                        "Project settings → Features → Sprints."
+                    )
         except JiraError as exc:
             ok = False
             print(f"  [HIBA] Board lekérdezés sikertelen: {exc}")
