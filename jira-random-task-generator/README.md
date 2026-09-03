@@ -51,7 +51,14 @@ Futtatás: `uv run generate-jira-tasks ...` (vagy `uv run python generate_tasks.
 ## Konfiguráció
 
 A tool környezeti változókból olvassa a beállításokat (vagy egy `.env`
-fájlból a munkakönyvtárban, `KULCS=érték` formátumban):
+fájlból a munkakönyvtárban, `KULCS=érték` formátumban). Kiindulásnak másold
+le a mellékelt [`example.env`](example.env)-et `.env` néven, és töltsd ki:
+
+```bash
+cp example.env .env
+```
+
+(A `.env` a `.gitignore`-ban van, nem kerül be a repóba.)
 
 | Változó | Kötelező | Leírás |
 |---|---|---|
