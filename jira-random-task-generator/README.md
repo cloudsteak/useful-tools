@@ -102,6 +102,10 @@ kezeléshez (sprint create/start). A projekthez már léteznie kell egy
 ## Használat
 
 ```bash
+# Kapcsolati teszt: csak azt ellenőrzi, hogy a Jira és a Vertex AI elérhető-e
+# (nem generál tartalmat, nem ír semmit Jira-ba) - ezzel érdemes kezdeni
+uv run generate-jira-tasks -p DEMO -x
+
 # 5 önálló user story angolul, DevOps kategóriában, sima backlog issue-ként
 uv run generate-jira-tasks -p DEMO -c 5 -l en -t story -k devops
 
@@ -119,10 +123,6 @@ uv run generate-jira-tasks -p DEMO -c 2 -t epic -f spike
 uv run generate-jira-tasks -p DEMO -c 2 -t epic \
   -o "fizetési szolgáltató integráció" \
   -E "Epic" -S "Történet"
-
-# Kapcsolati teszt: csak azt ellenőrzi, hogy a Jira és a Vertex AI elérhető-e
-# (nem generál tartalmat, nem ír semmit Jira-ba)
-uv run generate-jira-tasks -p DEMO -x
 ```
 
 (Minden kapcsolónak van hosszú és rövid formája is, lásd lentebb.)

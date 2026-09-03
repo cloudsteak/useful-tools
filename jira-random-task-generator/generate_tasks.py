@@ -21,12 +21,13 @@ location-nel próbálkozik, és ha a modell ott nem érhető el, automatikusan
 átvált 'global'-ra (lásd README / GEMINI_LOCATION).
 
 Használat:
+    # Csak a Jira + Vertex AI kapcsolat ellenőrzése, tartalom generálása nélkül
+    # - ezzel érdemes kezdeni
+    uv run generate-jira-tasks --project DEMO --check-connection
+
     uv run generate-jira-tasks --project DEMO --count 2 --stories-per-epic 5 \
         --language hu --type epic --category dev
     uv run generate-jira-tasks --project DEMO --count 8 --language en --type story --dry-run
-
-    # Csak a Jira + Vertex AI kapcsolat ellenőrzése, tartalom generálása nélkül
-    uv run generate-jira-tasks --project DEMO --check-connection
 """
 
 from __future__ import annotations
