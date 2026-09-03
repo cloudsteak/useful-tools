@@ -16,7 +16,7 @@ A tool a projekt Scrum board/sprint állapotát is beállítja: ha nincs futó
 sprint, létrehoz és elindít egyet.
 
 A Vertex AI hívások automatikusan kezelik a globális és a regionális Gemini
-modelleket is: elsőként a GOOGLE_CLOUD_LOCATION (default us-central1)
+modelleket is: elsőként a GOOGLE_CLOUD_LOCATION (default europe-west1)
 location-nel próbálkozik, és ha a modell ott nem érhető el, automatikusan
 átvált 'global'-ra (lásd README / GEMINI_LOCATION).
 

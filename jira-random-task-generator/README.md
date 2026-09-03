@@ -53,7 +53,7 @@ fájlból a munkakönyvtárban, `KULCS=érték` formátumban):
 | `JIRA_EMAIL` | igen | Jira account email |
 | `JIRA_API_TOKEN` | igen | [Atlassian API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
 | `GOOGLE_CLOUD_PROJECT` | igen | GCP projekt ID (Vertex AI-hoz) |
-| `GOOGLE_CLOUD_LOCATION` | nem | Vertex AI régió (default: `us-central1`) |
+| `GOOGLE_CLOUD_LOCATION` | nem | Vertex AI régió (default: `europe-west1`) |
 | `GEMINI_MODEL` | nem | Gemini modell név (default: `gemini-2.5-pro`) |
 | `GEMINI_LOCATION` | nem | Explicit Gemini location felülírás (lásd lentebb) |
 
@@ -65,11 +65,11 @@ service accountnak `Vertex AI User` szerepkör kell.
 ### Globális vs. regionális Gemini modellek
 
 Egyes Gemini modellek csak a **globális** (`global`) Vertex AI végponton
-érhetők el, mások **regionálisan** (pl. `us-central1`) — ez modellenként és
+érhetők el, mások **regionálisan** (pl. `europe-west1`) — ez modellenként és
 időben is változhat, ezért a tool ezt automatikusan kezeli, nem kell előre
 tudnod, melyik a `GEMINI_MODEL` esetében:
 
-1. Alapból a `GOOGLE_CLOUD_LOCATION` (default `us-central1`) location-nel
+1. Alapból a `GOOGLE_CLOUD_LOCATION` (default `europe-west1`) location-nel
    próbálkozik.
 2. Ha a modell ott nem érhető el, **automatikusan átvált `global`-ra**, és a
    további hívásoknál már ezt használja.

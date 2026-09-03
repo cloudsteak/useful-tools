@@ -54,8 +54,8 @@ class Config:
             jira_email=_require("JIRA_EMAIL"),
             jira_api_token=_require("JIRA_API_TOKEN"),
             gcp_project=_require("GOOGLE_CLOUD_PROJECT"),
-            gcp_location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1").strip()
-            or "us-central1",
+            gcp_location=os.environ.get("GOOGLE_CLOUD_LOCATION", "europe-west1").strip()
+            or "europe-west1",
             gemini_model=os.environ.get("GEMINI_MODEL", "gemini-2.5-pro").strip()
             or "gemini-2.5-pro",
             gemini_location_override=os.environ.get("GEMINI_LOCATION", "").strip() or None,
@@ -65,7 +65,7 @@ class Config:
         """(elsődleges, fallback) Vertex AI location pár a Gemini hívásokhoz.
 
         Egyes Gemini modellek csak 'global' location-ben érhetők el, mások
-        regionálisan (pl. 'us-central1'). Ha a felhasználó explicit
+        regionálisan (pl. 'europe-west1'). Ha a felhasználó explicit
         GEMINI_LOCATION-t állított be, azt szigorúan betartjuk (nincs
         automatikus fallback). Egyébként a GOOGLE_CLOUD_LOCATION-t próbáljuk
         elsőként, és ha a modell ott nem érhető el, a kliens automatikusan
