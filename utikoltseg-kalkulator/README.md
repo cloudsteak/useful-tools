@@ -7,4 +7,4 @@ A látogató beírja a település nevét, a kalkulátor kiszámolja az útiköl
 - Beállítások: `template.html` tetején a `CONFIG` blokk
 - Újragenerálás: `python3 build.py settlement_points.csv` (az `index.html` generált fájl)
 - Adatforrás: OpenStreetMap (ODbL) település-pontok, a k-monitor/parlament repóból
-- Pontos közúti távolsághoz add meg az `orsKey` értékét (openrouteservice.org, ingyenes)
+- Pontos közúti km: `ORS_KEY=... python3 fetch_distances.py settlement_points.csv` (egyszeri), majd `python3 build.py settlement_points.csv`

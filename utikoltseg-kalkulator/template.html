@@ -42,18 +42,16 @@ const CONFIG = {
   origin: { name: "Szentendre", lat: 47.66776, lon: 19.07605 },
   freeKm: 40,          // eddig ingyenes (egy irányban mért távolság)
   ratePerKm: 200,      // Ft / km a határ fölötti részre (oda-vissza = 2 x 100 Ft)
-  // Útvonaltávolság: légvonal x szorzó. Ha adsz OpenRouteService API kulcsot,
-  // valódi közúti távolságot számol (https://openrouteservice.org, ingyenes regisztráció).
-  roadFactor: 1.2,
-  orsKey: ""
+  // Tartalék: ha egy településhez nincs előre kiszámolt közúti km, légvonal x szorzóval becsül.
+  roadFactor: 1.2
 };
-// [név, megye, lat, lon] — forrás: OpenStreetMap (ODbL)
+// [név, megye, lat, lon, közúti km Szentendréről vagy null] — forrás: OpenStreetMap (ODbL)
 const DATA = __DATA__;
 // =========================
 
 const $ = id => document.getElementById(id);
 const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ő/g,"o").replace(/ű/g,"u");
-const items = DATA.map(d => ({ name:d[0], county:d[1], lat:d[2], lon:d[3], key:norm(d[0]) }));
+const items = DATA.map(d => ({ name:d[0], county:d[1], lat:d[2], lon:d[3], km:d[4], key:norm(d[0]) }));
 const fmt = n => n.toLocaleString("hu-HU");
 $("orig").textContent = CONFIG.origin.name;
 
@@ -64,20 +62,13 @@ function haversine(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-async function distanceKm(t) {
-  if (CONFIG.orsKey) {
-    try {
-      const o = CONFIG.origin;
-      const u = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${encodeURIComponent(CONFIG.orsKey)}&start=${o.lon},${o.lat}&end=${t.lon},${t.lat}`;
-      const r = await fetch(u);
-      if (r.ok) { const j = await r.json(); return j.features[0].properties.summary.distance / 1000; }
-    } catch (e) { /* visszaesünk a légvonalas becslésre */ }
-  }
+function distanceKm(t) {
+  if (t.km != null) return t.km;
   return haversine(CONFIG.origin.lat, CONFIG.origin.lon, t.lat, t.lon) * CONFIG.roadFactor;
 }
 
-async function show(t) {
-  const km = Math.round(await distanceKm(t));
+function show(t) {
+  const km = Math.round(distanceKm(t));
   const payable = Math.max(0, km - CONFIG.freeKm);
   const price = payable * CONFIG.ratePerKm;
   const res = $("res");
