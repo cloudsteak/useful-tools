@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Útiköltség kalkulátor</title>
+<style>
+  :root { --accent:#b8860b; --bg:#fff; --fg:#222; --muted:#777; --line:#ddd; --ok:#1e8e3e; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  .box { max-width:480px; margin:0 auto; }
+  label { display:block; font-weight:600; margin-bottom:6px; }
+  .field { position:relative; }
+  input { width:100%; padding:12px 14px; font-size:16px; border:1px solid var(--line); border-radius:8px; }
+  input:focus { outline:2px solid var(--accent); border-color:transparent; }
+  ul { position:absolute; left:0; right:0; top:100%; z-index:5; margin:4px 0 0; padding:0; list-style:none; background:#fff; border:1px solid var(--line); border-radius:8px; max-height:260px; overflow:auto; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+  li { padding:10px 14px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  li small { color:var(--muted); }
+  li.on, li:hover { background:#f5efe0; }
+  #res { margin-top:20px; padding:18px; border-radius:10px; background:#faf7ee; border:1px solid #eadfbd; display:none; text-align:center; }
+  #res .place { font-size:15px; color:var(--muted); }
+  #res .price { font-size:34px; font-weight:700; margin:6px 0; color:var(--accent); }
+  #res .price.free { color:var(--ok); }
+  #res .detail { font-size:14px; color:var(--muted); line-height:1.5; }
+  .note { margin-top:14px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+<div class="box">
+  <label for="q">Hol lesz az esemény? (település neve)</label>
+  <div class="field">
+    <input id="q" type="text" placeholder="pl. Szeged" autocomplete="off" aria-autocomplete="list">
+    <ul id="list" hidden></ul>
+  </div>
+  <div id="res" aria-live="polite"></div>
+  <div class="note">Az útiköltség a kiindulási helytől (<span id="orig"></span>) számolt távolság alapján értendő.</div>
+</div>
+
+<script>
+// ====== BEÁLLÍTÁSOK ======
+const CONFIG = {
+  origin: { name: "Szentendre", lat: 47.66776, lon: 19.07605 },
+  freeKm: 40,          // eddig ingyenes (egy irányban mért távolság)
+  ratePerKm: 200,      // Ft / km a határ fölötti részre (oda-vissza = 2 x 100 Ft)
+  // Tartalék: ha egy településhez nincs előre kiszámolt közúti km, légvonal x szorzóval becsül.
+  roadFactor: 1.2
+};
+// [név, megye, lat, lon, közúti km Szentendréről vagy null] — forrás: OpenStreetMap (ODbL)
+const DATA = __DATA__;
+// =========================
+
+const $ = id => document.getElementById(id);
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ő/g,"o").replace(/ű/g,"u");
+const items = DATA.map(d => ({ name:d[0], county:d[1], lat:d[2], lon:d[3], km:d[4], key:norm(d[0]) }));
+const fmt = n => n.toLocaleString("hu-HU");
+$("orig").textContent = CONFIG.origin.name;
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function distanceKm(t) {
+  if (t.km != null) return t.km;
+  return haversine(CONFIG.origin.lat, CONFIG.origin.lon, t.lat, t.lon) * CONFIG.roadFactor;
+}
+
+function show(t) {
+  const km = Math.round(distanceKm(t));
+  const payable = Math.max(0, km - CONFIG.freeKm);
+  const price = payable * CONFIG.ratePerKm;
+  const res = $("res");
+  res.style.display = "block";
+  res.innerHTML = `<div class="place">${t.name} (${t.county})</div>` +
+    (price === 0
+      ? `<div class="price free">Ingyenes</div><div class="detail">${km} km — ${CONFIG.freeKm} km-en belül nincs útiköltség.</div>`
+      : `<div class="price">${fmt(price)} Ft</div><div class="detail">${km} km — ${CONFIG.freeKm} km fölött ${payable} km × ${CONFIG.ratePerKm} Ft (oda-vissza)</div>`);
+}
+
+const input = $("q"), list = $("list");
+let shown = [], active = -1;
+
+function render() {
+  const q = norm(input.value.trim());
+  if (!q) { list.hidden = true; return; }
+  shown = items.filter(i => i.key.startsWith(q))
+    .concat(items.filter(i => !i.key.startsWith(q) && i.key.includes(q))).slice(0, 8);
+  active = shown.length ? 0 : -1;
+  list.innerHTML = shown.length
+    ? shown.map((s, i) => `<li data-i="${i}" class="${i===0?"on":""}">${s.name}<small>${s.county}</small></li>`).join("")
+    : `<li style="cursor:default">Nincs találat</li>`;
+  list.hidden = false;
+}
+function pick(i) {
+  const s = shown[i]; if (!s) return;
+  input.value = s.name; list.hidden = true; show(s);
+}
+input.addEventListener("input", () => { $("res").style.display = "none"; render(); });
+input.addEventListener("keydown", e => {
+  if (list.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    active = (active + (e.key === "ArrowDown" ? 1 : -1) + shown.length) % shown.length;
+    [...list.children].forEach((li, i) => li.classList.toggle("on", i === active));
+  } else if (e.key === "Enter") { e.preventDefault(); pick(active); }
+  else if (e.key === "Escape") list.hidden = true;
+});
+list.addEventListener("mousedown", e => { const li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); pick(+li.dataset.i); } });
+input.addEventListener("blur", () => setTimeout(() => list.hidden = true, 100));
+</script>
+</body>
+</html>
